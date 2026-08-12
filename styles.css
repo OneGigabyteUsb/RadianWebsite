@@ -1,0 +1,125 @@
+body {
+    background-color: #521D1D;
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+    color: #ffffff;
+    overflow-x: hidden;
+    width: 100%;
+}
+
+
+* {
+    box-sizing: border-box;
+}
+
+.TopBar {
+    background: linear-gradient(0deg,#502222 0%, #6d2929 100%);
+    display: flex;
+    padding: 0px;
+    width: 100%;
+    align-items: center;
+
+    box-shadow: -8px 8px 13px 2px rgba(0,0,0,0.25);
+}
+
+.button {
+  display: inline-block;
+  padding: 10px 10px;
+  color: white;
+  text-decoration: none;
+  border-radius: 0px;
+  font-weight: bold;
+}
+
+.Greating {
+  padding-left: 2vh;
+}
+
+.HomeG-Grid {
+  position: fixed;
+  display: grid;
+  gap: 10px;
+  
+  left: 3%;
+  padding: 10px;
+  top: 18%;
+  width: 50%;
+  height: 30vh;
+  background: linear-gradient(0deg,#502222 0%, #6d2929 100%);
+  border-radius: 2vh;
+  border: 1vh solid #4d1616;
+  box-shadow: -8px 8px 13px 2px rgba(0,0,0,0.25);
+}
+
+.HomeG-Grid2 {
+  position: fixed;
+  display: grid;
+  gap: 10px;
+  
+  left: 3%;
+  padding: 10px;
+  top: 50%;
+  width: 65%;
+  height: 35vh;
+  background: linear-gradient(0deg,#502222 0%, #6d2929 100%);
+  border-radius: 2vh;
+  border: 1vh solid #4d1616;
+  box-shadow: -8px 8px 13px 2px rgba(0,0,0,0.25);
+}
+
+.likes {
+  display: grid;
+  background-color: greenyellow;
+  width: 100%;
+  height: 10px;
+}
+
+.h {
+  display: flex;
+  margin-top: 1px;
+}
+
+.Game {
+  display: block;
+  text-decoration: none;
+  color: #ffffff;
+  width: 20%;
+  max-width: 190px;
+  height: 100%;
+  border-radius: 2vh;
+  border: 1vh solid #4d1616;
+  background: linear-gradient(0deg,#341616 0%, #5c2323 100%);
+}
+
+.Friend {
+  display: block;
+  width: 20%;
+  max-width: 140px;
+  height: 100%;
+  border-radius: 2vh;
+  text-align: center;
+  border: 1vh solid #4d1616;
+  background: linear-gradient(0deg,#341616 0%, #5c2323 100%);
+}
+
+.home-stats {
+   margin: 6px 0 24px;
+   color: #9a9a9a;
+   font-size: 16px;
+   display: flex;
+   gap: 16px;
+   position: fixed;
+   left: 2.3vh;
+   top: 12vh;
+}
+
+.logo {
+    margin-left: 1.5vh;
+    margin-top: 0.5vh;
+    padding-right: 8px;
+}
+
+.button:hover {
+    background-color: rgba(0, 0, 0, 0.16);
+}
