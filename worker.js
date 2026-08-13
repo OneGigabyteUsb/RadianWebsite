@@ -1,5 +1,15 @@
 export default {
   async fetch(request, env) {
-    return new Response("HELLO FROM RADIAN WORKER");
+    const url = new URL(request.url);
+
+    if (url.pathname === "/api/test-db") {
+      const result = await env.DB
+        .prepare("SELECT id, username FROM users")
+        .all();
+
+      return Response.json(result);
+    }
+
+    return env.ASSETS.fetch(request);
   }
 };
