@@ -267,14 +267,15 @@ async function loadHomeFriends() {
         const res = await fetch("/api/me/friends");
         if (!res.ok) throw new Error("no friends endpoint yet");
 
-        const friends = await res.json();
-        if (!Array.isArray(friends) || friends.length === 0 ) {
+        const data = await res.json();
+        const friends = data.friends || [];
+        if (friends.length === 0) {
             row.innerHTML = `<p class="home-empty-state">No friends yet.</p>`;
             return;
         }
 
         row.innerHTML = friends.map(friend => `
-            <a class="friend-tile" href="/profile/${friend.id}" data-link>
+            <a class="friend-tile" href="/profile/${friend.user_id}" data-link>
                 <div class="friend-tile-thumb"></div>
                 <div class="friend-tile-name">${friend.username}</div>
             </a>
