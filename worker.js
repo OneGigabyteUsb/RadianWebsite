@@ -1,4 +1,4 @@
-const PBKDF2_ITERATIONS = 200000;
+const PBKDF2_ITERATIONS = 100000;
 
 function hexToBytes(hex) {
     const bytes = new Uint8Array(hex.length / 2);
