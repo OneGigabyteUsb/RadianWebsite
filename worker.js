@@ -214,21 +214,18 @@ export default {
                     }
                 );
 
+            } catch (error) {
+                console.error("Login error:", error);
+
+                return Response.json({
+                    error: "Internal server error."
+                }, {
+                    status: 500
+                });
             }
-        } catch (error) {
-            console.error("Login error:", error);
-
-            return Response.json({
-                error: error.message,
-                stack: error.stack
-            }, {
-                status: 500
-            });
         }
-    }
-}
 
-// Everything else goes to your website
-return env.ASSETS.fetch(request);
-}
+        // Everything else goes to your website
+        return env.ASSETS.fetch(request);
+    }
 };
