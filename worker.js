@@ -139,6 +139,81 @@ export default {
             return Response.json(user);
         }
 
+        if (url.pathname === "/api/me/friends" && request.method === "GET") {
+            try {
+                const cookie = request.headers.get("Cookie") || "";
+                const match = cookie.match(/radian_session=([^;]+)/);
+
+                if (!match) {
+                    return Response.json({
+                        error: "Not logged in."
+                    }, {
+                        status: 401
+                    });
+                }
+
+                const sessionId = match[1];
+
+                const session = await env.DB
+                    .prepare(`
+                SELECT user_id
+                FROM sessions
+                WHERE session_id = ?
+            `)
+                    .bind(sessionId)
+                    .first();
+
+                if (!session) {
+                    return Response.json({
+                        error: "Not logged in."
+                    }, {
+                        status: 401
+                    });
+                }
+
+                const friends = await env.DB
+                    .prepare(`
+                SELECT
+                    f.id,
+                    u.id AS user_id,
+                    u.username,
+                    u.bio,
+                    u.shirt_id
+                FROM friendships f
+                JOIN users u
+                    ON u.id = CASE
+                        WHEN f.requester_id = ? THEN f.recipient_id
+                        ELSE f.requester_id
+                    END
+                WHERE
+                    (f.requester_id = ? OR f.recipient_id = ?)
+                    AND f.status = 'accepted'
+                    AND u.is_deleted = 0
+                    AND u.is_banned = 0
+                ORDER BY u.username
+            `)
+                    .bind(
+                        session.user_id,
+                        session.user_id,
+                        session.user_id
+                    )
+                    .all();
+
+                return Response.json({
+                    friends: friends.results || []
+                });
+
+            } catch (error) {
+                console.error("Me friends error:", error);
+
+                return Response.json({
+                    error: "Internal server error."
+                }, {
+                    status: 500
+                });
+            }
+        }
+
         if (url.pathname === "/api/signup" && request.method === "POST") {
             try {
                 const body = await request.json();
