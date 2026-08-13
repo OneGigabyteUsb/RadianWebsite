@@ -8,8 +8,8 @@
   },
 
   "assets": {
-    "directory": "./assets",
-    "binding": "ASSETS",
+    "directory": "./website",
+    "binding": "WEBSITE",
     "not_found_handling": "single-page-application"
   },
 
