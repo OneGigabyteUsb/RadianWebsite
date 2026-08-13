@@ -1,0 +1,19 @@
+[
+  {
+    "id": 1,
+    "username": "test",
+    "colors": {
+      "head": "#ffffff",
+      "torso": "#bf4545",
+      "right_arm": "#ffffff",
+      "left_arm": "#ffffff",
+      "right_leg": "#2c1919",
+      "left_leg": "#2c1919"
+    },
+    "accessories": {
+      "ids": [
+      ]
+    },
+    "face_id": 1
+  }
+]

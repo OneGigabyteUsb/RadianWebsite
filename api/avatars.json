@@ -1,0 +1,54 @@
+[
+  {
+    "id": 1,
+    "colors": {
+      "head": "#ffb866",
+      "torso": "#009dff",
+      "right_arm": "#ffb866",
+      "left_arm": "#ffb866",
+      "right_leg": "#11181d",
+      "left_leg": "#11181d"
+    },
+    "accessories": {
+      "ids": [
+        4,
+        5,
+        2
+      ]
+    },
+    "face_id": 1
+  },
+  {
+    "id": 5,
+    "colors": {
+      "head": "#f2d6b3",
+      "torso": "#45cc33",
+      "right_arm": "#f2d6b3",
+      "left_arm": "#f2d6b3",
+      "right_leg": "#273125",
+      "left_leg": "#273125"
+    },
+    "accessories": {
+      "ids": []
+    },
+    "face_id": 1
+  },
+  {
+    "id": 9,
+    "colors": {
+      "head": "#f2d6b3",
+      "torso": "#3366cc",
+      "right_arm": "#f2d6b3",
+      "left_arm": "#f2d6b3",
+      "right_leg": "#2c2c2c",
+      "left_leg": "#2c2c2c"
+    },
+    "accessories": {
+      "ids": [
+        3,
+        1
+      ]
+    },
+    "face_id": 1
+  }
+]

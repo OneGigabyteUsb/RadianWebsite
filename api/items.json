@@ -1,0 +1,47 @@
+[
+  {
+    "Id": 1,
+    "name": "test",
+    "description": "test item",
+    "model": "/Hats/cola.gltf",
+    "texture": "textures/models/cola.png",
+    "type": "Hat",
+    "price": 0
+  },
+  {
+    "Id": 2,
+    "name": "Diamond Shirt",
+    "description": "real item",
+    "model": "",
+    "texture": "t-shirts/DiamondPlate.png",
+    "type": "T-shirt",
+    "price": 0
+  },
+  {
+    "Id": 3,
+    "name": "Diamond Plate",
+    "description": "real item",
+    "model": "",
+    "texture": "t-shirts/Diamond_Shirt.png",
+    "type": "T-shirt",
+    "price": 0
+  },
+  {
+    "Id": 4,
+    "name": "Sun Glasses",
+    "description": "Just some sun glasses better wear them if its sunny outside",
+    "model": "/Hats/SunGlasses.gltf",
+    "texture": "",
+    "type": "Hat",
+    "price": 0
+  },
+  {
+    "Id": 5,
+    "name": "Hair",
+    "description": "Now your not bald.",
+    "model": "/Hats/BoyHair.gltf",
+    "texture": "",
+    "type": "Hat",
+    "price": 0
+  }
+]
