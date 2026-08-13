@@ -5,7 +5,7 @@
 
   "assets": {
     "binding": "ASSETS",
-    "directory": "./assets",
+    "directory": "./website",
     "not_found_handling": "single-page-application"
   },
 
