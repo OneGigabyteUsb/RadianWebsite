@@ -1,7 +1,8 @@
 {
   "name": "radian-website",
+  "compatibility_date": "2026-08-13",
   "assets": {
-    "directory": "./dist",
+    "directory": "./",
     "not_found_handling": "single-page-application"
   }
 }
