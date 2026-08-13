@@ -141,9 +141,21 @@ export default {
         }
 
         if (url.pathname === "/api/test-hash" && request.method === "GET") {
-              const hash = await hashPassword("TestPassword123!");
-              return Response.json({ hash });
-        }
+  try {
+    const hash = await hashPassword("TestPassword123!");
+
+    return Response.json({
+      success: true,
+      hash
+    });
+  } catch (error) {
+    return Response.json({
+      success: false,
+      error: error.message,
+      stack: error.stack
+    }, { status: 500 });
+  }
+}
 
         if (url.pathname === "/api/login" && request.method === "POST") {
             try {
