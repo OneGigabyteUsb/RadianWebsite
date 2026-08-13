@@ -210,7 +210,6 @@ async function homePage() {
     app.innerHTML = `<p>Loading...</p>`;
 
     const meRes = await fetch("/api/me");
-    const meRes2 = await fetch("/api/me/friends");
 
     if (!meRes.ok) {
         navigate("/login");
@@ -218,7 +217,6 @@ async function homePage() {
     }
 
     const me = await meRes.json();
-    const me2 = await meRes2.json();
     if (me.is_banned) {
         navigate("/banned");
         return;
@@ -230,7 +228,7 @@ async function homePage() {
         <div class="home-body">
             <h1 class="home-greeting">Good ${timeOfDayGreeting()}, ${me.username}</h1>
             <div class="home-stats">
-                <span>${me2.length} Friends</span>
+                <span>${me.friend_count} Friends</span>
                 <span>${me.follower_count} Followers</span>
                 <span>${me.following_count} Following</span>
             </div>
@@ -613,7 +611,7 @@ function searchPage() {
 async function requestsPage() {
     app.innerHTML = `<div class="home-body"><p>Loading...</p></div>`;
 
-    const res = await fetch("/api/me/friend-requests");
+    const res = await fetch("/api/me/friend");
     if (res.status === 401) {
         navigate("/login");
         return;
