@@ -214,6 +214,132 @@ export default {
             }
         }
 
+        if (url.pathname === "/api/me/friend-requests" && request.method === "POST") {
+            try {
+                const cookie = request.headers.get("Cookie") || "";
+                const match = cookie.match(/radian_session=([^;]+)/);
+
+                if (!match) {
+                    return Response.json({
+                        error: "Not logged in."
+                    }, {
+                        status: 401
+                    });
+                }
+
+                const session = await env.DB
+                    .prepare(`
+                SELECT user_id
+                FROM sessions
+                WHERE session_id = ?
+            `)
+                    .bind(match[1])
+                    .first();
+
+                if (!session) {
+                    return Response.json({
+                        error: "Not logged in."
+                    }, {
+                        status: 401
+                    });
+                }
+
+                const body = await request.json();
+                const recipientId = Number(body.user_id);
+
+                if (!Number.isInteger(recipientId)) {
+                    return Response.json({
+                        error: "Invalid user ID."
+                    }, {
+                        status: 400
+                    });
+                }
+
+                if (recipientId === session.user_id) {
+                    return Response.json({
+                        error: "You cannot send yourself a friend request."
+                    }, {
+                        status: 400
+                    });
+                }
+
+                const recipient = await env.DB
+                    .prepare(`
+                SELECT id
+                FROM users
+                WHERE id = ?
+                  AND is_deleted = 0
+                  AND is_banned = 0
+            `)
+                    .bind(recipientId)
+                    .first();
+
+                if (!recipient) {
+                    return Response.json({
+                        error: "User not found."
+                    }, {
+                        status: 404
+                    });
+                }
+
+                const existing = await env.DB
+                    .prepare(`
+                SELECT id, status
+                FROM friendships
+                WHERE
+                    (requester_id = ? AND recipient_id = ?)
+                    OR
+                    (requester_id = ? AND recipient_id = ?)
+                LIMIT 1
+            `)
+                    .bind(
+                        session.user_id,
+                        recipientId,
+                        recipientId,
+                        session.user_id
+                    )
+                    .first();
+
+                if (existing) {
+                    return Response.json({
+                        error: "A friendship or friend request already exists."
+                    }, {
+                        status: 409
+                    });
+                }
+
+                const result = await env.DB
+                    .prepare(`
+                INSERT INTO friendships (
+                    requester_id,
+                    recipient_id,
+                    status
+                )
+                VALUES (?, ?, 'pending')
+            `)
+                    .bind(session.user_id, recipientId)
+                    .run();
+
+                return Response.json({
+                    id: result.meta.last_row_id,
+                    requester_id: session.user_id,
+                    recipient_id: recipientId,
+                    status: "pending"
+                }, {
+                    status: 201
+                });
+
+            } catch (error) {
+                console.error("Send friend request error:", error);
+
+                return Response.json({
+                    error: "Internal server error."
+                }, {
+                    status: 500
+                });
+            }
+        }
+
         if (url.pathname === "/api/signup" && request.method === "POST") {
             try {
                 const body = await request.json();
