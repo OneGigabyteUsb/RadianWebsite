@@ -363,6 +363,202 @@ export default {
             }
         }
 
+        // requestsPage() in script.js (the /friends page) GETs this to list
+        // incoming pending requests -- separate from the POST above, which
+        // sends a new request.
+        if (url.pathname === "/api/me/friend-requests" && request.method === "GET") {
+            try {
+                const cookie = request.headers.get("Cookie") || "";
+                const match = cookie.match(/radian_session=([^;]+)/);
+
+                if (!match) {
+                    return Response.json({
+                        error: "Not logged in."
+                    }, {
+                        status: 401
+                    });
+                }
+
+                const session = await env.DB
+                    .prepare("SELECT user_id FROM sessions WHERE session_id = ?")
+                    .bind(match[1])
+                    .first();
+
+                if (!session) {
+                    return Response.json({
+                        error: "Not logged in."
+                    }, {
+                        status: 401
+                    });
+                }
+
+                const requests = await env.DB
+                    .prepare(`
+                        SELECT u.id, u.username
+                        FROM friendships f
+                        JOIN users u ON u.id = f.requester_id
+                        WHERE f.recipient_id = ?
+                          AND f.status = 'pending'
+                          AND u.is_deleted = 0
+                          AND u.is_banned = 0
+                        ORDER BY u.username
+                    `)
+                    .bind(session.user_id)
+                    .all();
+
+                // requestsPage() expects a bare array, not a wrapped object.
+                return Response.json(requests.results || []);
+
+            } catch (error) {
+                console.error("List friend requests error:", error);
+
+                return Response.json({
+                    error: "Internal server error."
+                }, {
+                    status: 500
+                });
+            }
+        }
+
+        if (url.pathname === "/api/friends/accept" && request.method === "POST") {
+            try {
+                const cookie = request.headers.get("Cookie") || "";
+                const match = cookie.match(/radian_session=([^;]+)/);
+
+                if (!match) {
+                    return Response.json({
+                        error: "Not logged in."
+                    }, {
+                        status: 401
+                    });
+                }
+
+                const session = await env.DB
+                    .prepare("SELECT user_id FROM sessions WHERE session_id = ?")
+                    .bind(match[1])
+                    .first();
+
+                if (!session) {
+                    return Response.json({
+                        error: "Not logged in."
+                    }, {
+                        status: 401
+                    });
+                }
+
+                const body = await request.json();
+                const requesterId = Number(body.requester_id);
+
+                if (!Number.isInteger(requesterId)) {
+                    return Response.json({
+                        error: "Invalid user ID."
+                    }, {
+                        status: 400
+                    });
+                }
+
+                const result = await env.DB
+                    .prepare(`
+                        UPDATE friendships
+                        SET status = 'accepted'
+                        WHERE requester_id = ?
+                          AND recipient_id = ?
+                          AND status = 'pending'
+                    `)
+                    .bind(requesterId, session.user_id)
+                    .run();
+
+                if (!result.meta.changes) {
+                    return Response.json({
+                        error: "No pending request from that user."
+                    }, {
+                        status: 404
+                    });
+                }
+
+                return Response.json({ status: "accepted" });
+
+            } catch (error) {
+                console.error("Accept friend request error:", error);
+
+                return Response.json({
+                    error: "Internal server error."
+                }, {
+                    status: 500
+                });
+            }
+        }
+
+        if (url.pathname === "/api/friends/decline" && request.method === "POST") {
+            try {
+                const cookie = request.headers.get("Cookie") || "";
+                const match = cookie.match(/radian_session=([^;]+)/);
+
+                if (!match) {
+                    return Response.json({
+                        error: "Not logged in."
+                    }, {
+                        status: 401
+                    });
+                }
+
+                const session = await env.DB
+                    .prepare("SELECT user_id FROM sessions WHERE session_id = ?")
+                    .bind(match[1])
+                    .first();
+
+                if (!session) {
+                    return Response.json({
+                        error: "Not logged in."
+                    }, {
+                        status: 401
+                    });
+                }
+
+                const body = await request.json();
+                const requesterId = Number(body.requester_id);
+
+                if (!Number.isInteger(requesterId)) {
+                    return Response.json({
+                        error: "Invalid user ID."
+                    }, {
+                        status: 400
+                    });
+                }
+
+                // Declining removes the pending row entirely, so the
+                // requester is free to send a new request later.
+                const result = await env.DB
+                    .prepare(`
+                        DELETE FROM friendships
+                        WHERE requester_id = ?
+                          AND recipient_id = ?
+                          AND status = 'pending'
+                    `)
+                    .bind(requesterId, session.user_id)
+                    .run();
+
+                if (!result.meta.changes) {
+                    return Response.json({
+                        error: "No pending request from that user."
+                    }, {
+                        status: 404
+                    });
+                }
+
+                return Response.json({ status: "declined" });
+
+            } catch (error) {
+                console.error("Decline friend request error:", error);
+
+                return Response.json({
+                    error: "Internal server error."
+                }, {
+                    status: 500
+                });
+            }
+        }
+
         if (url.pathname === "/api/signup" && request.method === "POST") {
             try {
                 const body = await request.json();
