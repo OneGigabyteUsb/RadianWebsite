@@ -136,7 +136,26 @@ export default {
                 });
             }
 
-            return Response.json(user);
+            // script.js's homePage/profilePage render these counts directly,
+            // so /api/me needs to include them alongside the base user row.
+            const friendCountRow = await env.DB
+                .prepare(`
+                    SELECT COUNT(*) AS count
+                    FROM friendships
+                    WHERE (requester_id = ? OR recipient_id = ?)
+                      AND status = 'accepted'
+                `)
+                .bind(user.id, user.id)
+                .first();
+
+            return Response.json({
+                ...user,
+                friend_count: friendCountRow?.count ?? 0,
+                // There's no followers/following table yet, so these are
+                // stubbed at 0 rather than left undefined in the response.
+                follower_count: 0,
+                following_count: 0,
+            });
         }
 
         if (url.pathname === "/api/me/friends" && request.method === "GET") {
@@ -214,7 +233,11 @@ export default {
             }
         }
 
-        if (url.pathname === "/api/me/friend-requests" && request.method === "POST") {
+        // script.js's "Add Friend" button posts here (see renderRelationActions
+        // in script.js), so this is aligned to /api/friends/request rather
+        // than /api/me/friend-requests, which script.js instead GETs to list
+        // incoming requests (not implemented here).
+        if (url.pathname === "/api/friends/request" && request.method === "POST") {
             try {
                 const cookie = request.headers.get("Cookie") || "";
                 const match = cookie.match(/radian_session=([^;]+)/);
@@ -245,7 +268,7 @@ export default {
                 }
 
                 const body = await request.json();
-                const recipientId = Number(body.user_id);
+                const recipientId = Number(body.target_id);
 
                 if (!Number.isInteger(recipientId)) {
                     return Response.json({
