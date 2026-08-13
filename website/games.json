@@ -1,0 +1,47 @@
+[
+  {
+    "Id": 1,
+    "name": "Demo",
+    "description": "Test physics and features while developing Radian.",
+    "creator_id": 1,
+    "creator_name": "OneGigabyteUsb",
+    "thumbnail_version": 1,
+    "game_path": "maps/Demo.json"
+  },
+  {
+    "Id": 2,
+    "name": "House",
+    "description": "A house",
+    "creator_id": 1,
+    "creator_name": "OneGigabyteUsb",
+    "thumbnail_version": 1,
+    "game_path": "maps/Demo.json"
+  },
+  {
+    "Id": 3,
+    "name": "Google",
+    "description": "Google.com",
+    "creator_id": 3,
+    "creator_name": "JokeAccount",
+    "thumbnail_version": 1,
+    "game_path": "maps/Demo.json"
+  },
+  {
+    "Id": 4,
+    "name": "BrickBattle: Waterfall Fortress",
+    "description": "Google.com",
+    "creator_id": 3,
+    "creator_name": "OneGigabyteUsb",
+    "thumbnail_version": 1,
+    "game_path": "maps/Demo.json"
+  },
+  {
+    "Id": 5,
+    "name": "BrickBattle Fortress",
+    "description": "Google.com",
+    "creator_id": 3,
+    "creator_name": "OneGigabyteUsb",
+    "thumbnail_version": 1,
+    "game_path": "maps/Demo.json"
+  }
+]
