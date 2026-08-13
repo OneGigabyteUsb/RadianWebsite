@@ -1,4 +1,4 @@
-const PBKDF2_ITERATIONS = 310000; // Replace with your Python value
+const PBKDF2_ITERATIONS = 200000;
 
 function hexToBytes(hex) {
   const bytes = new Uint8Array(hex.length / 2);
