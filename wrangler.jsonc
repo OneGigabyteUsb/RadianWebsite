@@ -8,7 +8,7 @@
   },
 
   "assets": {
-    "directory": "/dist",
+    "directory": "./dist",
     "binding": "WEBSITE",
     "not_found_handling": "single-page-application"
   },
