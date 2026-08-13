@@ -611,7 +611,7 @@ function searchPage() {
 async function requestsPage() {
     app.innerHTML = `<div class="home-body"><p>Loading...</p></div>`;
 
-    const res = await fetch("/api/me/friend");
+    const res = await fetch("/api/me/friend-requests");
     if (res.status === 401) {
         navigate("/login");
         return;
