@@ -226,6 +226,12 @@ export default {
             }
         }
 
+        if (url.pathname.startsWith("/api/")) {
+            return new Response("API endpoint not found", {
+                status: 404
+            });
+        }
+
         return env.ASSETS.fetch(request);
     }
 };
