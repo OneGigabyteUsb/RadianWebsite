@@ -28,7 +28,8 @@ async function hashPassword(password) {
         ["deriveBits"]
     );
 
-    const bits = await crypto.subtle.deriveBits({
+    const bits = await crypto.subtle.deriveBits(
+        {
             name: "PBKDF2",
             salt,
             iterations: PBKDF2_ITERATIONS,
@@ -60,7 +61,8 @@ async function verifyPassword(password, stored) {
             ["deriveBits"]
         );
 
-        const bits = await crypto.subtle.deriveBits({
+        const bits = await crypto.subtle.deriveBits(
+            {
                 name: "PBKDF2",
                 salt,
                 iterations,
@@ -80,7 +82,6 @@ export default {
     async fetch(request, env) {
         const url = new URL(request.url);
 
-        // API routes
         if (url.pathname === "/api/me" && request.method === "GET") {
             const cookie = request.headers.get("Cookie") || "";
 
@@ -111,12 +112,12 @@ export default {
 
             const user = await env.DB
                 .prepare(`
-      SELECT id, username, bio, visits, created_at,
-             is_deleted, is_staff, is_moderator,
-             is_banned, shirt_id, last_seen
-      FROM users
-      WHERE id = ?
-    `)
+                    SELECT id, username, bio, visits, created_at,
+                           is_deleted, is_staff, is_moderator,
+                           is_banned, shirt_id, last_seen
+                    FROM users
+                    WHERE id = ?
+                `)
                 .bind(session.user_id)
                 .first();
 
@@ -157,10 +158,10 @@ export default {
 
                 const record = await env.DB
                     .prepare(`
-        SELECT id, username, password_hash
-        FROM playerhashes
-        WHERE username = ?
-      `)
+                        SELECT id, username, password_hash
+                        FROM playerhashes
+                        WHERE username = ?
+                    `)
                     .bind(username)
                     .first();
 
@@ -174,10 +175,10 @@ export default {
 
                 const user = await env.DB
                     .prepare(`
-        SELECT id, username, is_banned
-        FROM users
-        WHERE id = ?
-      `)
+                        SELECT id, username, is_banned
+                        FROM users
+                        WHERE id = ?
+                    `)
                     .bind(record.id)
                     .first();
 
@@ -195,9 +196,9 @@ export default {
 
                 await env.DB
                     .prepare(`
-        INSERT INTO sessions (session_id, user_id)
-        VALUES (?, ?)
-      `)
+                        INSERT INTO sessions (session_id, user_id)
+                        VALUES (?, ?)
+                    `)
                     .bind(sessionId, record.id)
                     .run();
 
@@ -225,7 +226,6 @@ export default {
             }
         }
 
-        // Everything else goes to your website
         return env.ASSETS.fetch(request);
     }
 };
