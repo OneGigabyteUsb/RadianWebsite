@@ -3,6 +3,10 @@
   "main": "worker.js",
   "compatibility_date": "2026-08-13",
 
+  "observability": {
+    "enabled": true
+  },
+
   "assets": {
     "directory": "./assets",
     "not_found_handling": "single-page-application"
