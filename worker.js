@@ -28,8 +28,7 @@ async function hashPassword(password) {
         ["deriveBits"]
     );
 
-    const bits = await crypto.subtle.deriveBits(
-        {
+    const bits = await crypto.subtle.deriveBits({
             name: "PBKDF2",
             salt,
             iterations: PBKDF2_ITERATIONS,
@@ -61,8 +60,7 @@ async function verifyPassword(password, stored) {
             ["deriveBits"]
         );
 
-        const bits = await crypto.subtle.deriveBits(
-            {
+        const bits = await crypto.subtle.deriveBits({
                 name: "PBKDF2",
                 salt,
                 iterations,
@@ -139,6 +137,107 @@ export default {
             }
 
             return Response.json(user);
+        }
+
+        if (url.pathname === "/api/signup" && request.method === "POST") {
+            try {
+                const body = await request.json();
+
+                const username = (body.username || "").trim();
+                const password = body.password || "";
+
+                if (!username || !password) {
+                    return Response.json({
+                        error: "Username and password are required."
+                    }, {
+                        status: 400
+                    });
+                }
+
+                if (username.length < 3 || username.length > 20) {
+                    return Response.json({
+                        error: "Username must be between 3 and 20 characters."
+                    }, {
+                        status: 400
+                    });
+                }
+
+                if (password.length < 8) {
+                    return Response.json({
+                        error: "Password must be at least 8 characters."
+                    }, {
+                        status: 400
+                    });
+                }
+
+                const existingUser = await env.DB
+                    .prepare(`
+                SELECT id
+                FROM users
+                WHERE username = ?
+            `)
+                    .bind(username)
+                    .first();
+
+                if (existingUser) {
+                    return Response.json({
+                        error: "Username is already taken."
+                    }, {
+                        status: 409
+                    });
+                }
+
+                const passwordHash = await hashPassword(password);
+
+                const result = await env.DB
+                    .prepare(`
+                INSERT INTO users (
+                    username,
+                    bio,
+                    visits,
+                    created_at,
+                    is_deleted,
+                    is_staff,
+                    is_moderator,
+                    is_banned,
+                    shirt_id,
+                    last_seen
+                )
+                VALUES (?, '', 0, datetime('now'), 0, 0, 0, 0, 1, datetime('now'))
+            `)
+                    .bind(username)
+                    .run();
+
+                const userId = result.meta.last_row_id;
+
+                await env.DB
+                    .prepare(`
+                INSERT INTO playerhashes (
+                    id,
+                    username,
+                    password_hash
+                )
+                VALUES (?, ?, ?)
+            `)
+                    .bind(userId, username, passwordHash)
+                    .run();
+
+                return Response.json({
+                    id: userId,
+                    username
+                }, {
+                    status: 201
+                });
+
+            } catch (error) {
+                console.error("Signup error:", error);
+
+                return Response.json({
+                    error: "Internal server error."
+                }, {
+                    status: 500
+                });
+            }
         }
 
         if (url.pathname === "/api/login" && request.method === "POST") {
