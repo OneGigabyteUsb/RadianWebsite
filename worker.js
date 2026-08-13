@@ -222,12 +222,30 @@ export default {
                     .bind(userId, username, passwordHash)
                     .run();
 
-                return Response.json({
-                    id: userId,
-                    username
-                }, {
-                    status: 201
-                });
+                const sessionId = bytesToHex(
+                    crypto.getRandomValues(new Uint8Array(32))
+                );
+
+                await env.DB
+                    .prepare(`
+        INSERT INTO sessions (session_id, user_id)
+        VALUES (?, ?)
+    `)
+                    .bind(sessionId, userId)
+                    .run();
+
+                return new Response(
+                    JSON.stringify({
+                        id: userId,
+                        username
+                    }), {
+                        status: 201,
+                        headers: {
+                            "Content-Type": "application/json",
+                            "Set-Cookie": `radian_session=${sessionId}; Path=/; HttpOnly; Secure; SameSite=Lax`
+                        }
+                    }
+                );
 
             } catch (error) {
                 console.error("Signup error:", error);
