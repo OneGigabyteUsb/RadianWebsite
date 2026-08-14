@@ -366,6 +366,8 @@ async function gameDetailPage(id) {
     `;
 }
 
+window.gameDetailPage = gameDetailPage
+
 
 async function gamesPage() {
     document.title = `RADIAN | Games`;
