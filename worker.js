@@ -158,6 +158,91 @@ export default {
             });
         }
 
+        // showBioEditor() in script.js POSTs the new bio text here, then
+        // re-renders the profile with whatever this returns -- so the
+        // response needs the same shape as /api/me (friend_count etc.),
+        // not just the updated bio field.
+        if (url.pathname === "/api/me/bio" && request.method === "POST") {
+            try {
+                const cookie = request.headers.get("Cookie") || "";
+                const match = cookie.match(/radian_session=([^;]+)/);
+
+                if (!match) {
+                    return Response.json({
+                        error: "Not logged in."
+                    }, {
+                        status: 401
+                    });
+                }
+
+                const session = await env.DB
+                    .prepare("SELECT user_id FROM sessions WHERE session_id = ?")
+                    .bind(match[1])
+                    .first();
+
+                if (!session) {
+                    return Response.json({
+                        error: "Not logged in."
+                    }, {
+                        status: 401
+                    });
+                }
+
+                const body = await request.json();
+                const bio = typeof body.bio === "string" ? body.bio : "";
+
+                if (bio.length > 300) {
+                    return Response.json({
+                        error: "Bio must be 300 characters or fewer."
+                    }, {
+                        status: 400
+                    });
+                }
+
+                await env.DB
+                    .prepare("UPDATE users SET bio = ? WHERE id = ?")
+                    .bind(bio, session.user_id)
+                    .run();
+
+                const user = await env.DB
+                    .prepare(`
+                        SELECT id, username, bio, visits, created_at,
+                               is_deleted, is_staff, is_moderator,
+                               is_banned, shirt_id, last_seen
+                        FROM users
+                        WHERE id = ?
+                    `)
+                    .bind(session.user_id)
+                    .first();
+
+                const friendCountRow = await env.DB
+                    .prepare(`
+                        SELECT COUNT(*) AS count
+                        FROM friendships
+                        WHERE (requester_id = ? OR recipient_id = ?)
+                          AND status = 'accepted'
+                    `)
+                    .bind(session.user_id, session.user_id)
+                    .first();
+
+                return Response.json({
+                    ...user,
+                    friend_count: friendCountRow?.count ?? 0,
+                    follower_count: 0,
+                    following_count: 0,
+                });
+
+            } catch (error) {
+                console.error("Update bio error:", error);
+
+                return Response.json({
+                    error: "Internal server error."
+                }, {
+                    status: 500
+                });
+            }
+        }
+
         if (url.pathname === "/api/me/friends" && request.method === "GET") {
             try {
                 const cookie = request.headers.get("Cookie") || "";
@@ -948,7 +1033,12 @@ export default {
                 status: 404
             });
         }
+        const assetResponse = await env.ASSETS.fetch(request);
 
-        return env.ASSETS.fetch(request);
+        if (assetResponse.status === 404 && !url.pathname.includes(".")) {
+            return env.ASSETS.fetch(new URL("/index.html", url));
+        }
+
+        return assetResponse;
     }
 };
