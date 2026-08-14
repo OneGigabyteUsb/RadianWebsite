@@ -100,7 +100,6 @@ function router() {
         signupPage();
     }
     else if (path === "/builder") {
-        catalogPage();
     }
     else if (path === "/catalog") {
         avatarPage();
@@ -234,7 +233,7 @@ async function homePage() {
             </div>
 
             <div class="home-panel">
-                <a href="/search" data-link class="home-panel-header">Friends &rarr;</a>
+                <a href="/profile/${me.id}" data-link class="home-panel-header">Friends &rarr;</a>
                 <div id="home-friends-row" class="home-tile-row">
                     <p class="home-empty-state">Loading friends...</p>
                 </div>
@@ -330,10 +329,9 @@ async function gameDetailPage(id) {
 
     let games;
     try {
-        games = await loadGames("api/games.json");
+        games = await loadGames("/api/games.json");
     } catch (err) {
         return;
-        console.log(err)
     }
 
     const game = games.find(g => String(g.id) === String(id));
