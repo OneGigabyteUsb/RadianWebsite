@@ -234,7 +234,7 @@ async function homePage() {
             </div>
 
             <div class="home-panel">
-                <a href="/profile/${me.id}" data-link class="home-panel-header">Friends &rarr;</a>
+                <a href="/search" data-link class="home-panel-header">Friends &rarr;</a>
                 <div id="home-friends-row" class="home-tile-row">
                     <p class="home-empty-state">Loading friends...</p>
                 </div>
