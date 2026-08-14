@@ -749,6 +749,126 @@ export default {
             }
         }
 
+        // searchPage() in script.js hits this live as the user types.
+        // Ported from server.py's _handle_search: matches by substring on
+        // username (case-insensitive), capped at 25 results, with
+        // friendship_status computed relative to the viewer (if logged in)
+        // same as /api/profile/:id. follow_status is intentionally omitted
+        // -- there's no followers table yet, and renderRelationActions() in
+        // script.js just skips the Follow/Unfollow button when it's absent.
+        if (url.pathname === "/api/search" && request.method === "GET") {
+            try {
+                const term = (url.searchParams.get("q") || "").trim().toLowerCase();
+
+                if (!term) {
+                    return Response.json([]);
+                }
+
+                let viewerId = null;
+                const cookie = request.headers.get("Cookie") || "";
+                const match = cookie.match(/radian_session=([^;]+)/);
+
+                if (match) {
+                    const session = await env.DB
+                        .prepare("SELECT user_id FROM sessions WHERE session_id = ?")
+                        .bind(match[1])
+                        .first();
+
+                    if (session) viewerId = session.user_id;
+                }
+
+                // Escape LIKE wildcards that might appear in the search term.
+                const likeTerm = `%${term.replace(/[%_\\]/g, c => `\\${c}`)}%`;
+
+                const usersResult = await env.DB
+                    .prepare(`
+                        SELECT id, username, last_seen
+                        FROM users
+                        WHERE is_deleted = 0
+                          AND LOWER(username) LIKE ? ESCAPE '\\'
+                        ORDER BY username
+                        LIMIT 25
+                    `)
+                    .bind(likeTerm)
+                    .all();
+
+                const users = usersResult.results || [];
+
+                // Pull all of the viewer's friendships in one query instead
+                // of one per search result.
+                const friendshipByOtherId = new Map();
+
+                if (viewerId) {
+                    const friendships = await env.DB
+                        .prepare(`
+                            SELECT requester_id, recipient_id, status
+                            FROM friendships
+                            WHERE requester_id = ? OR recipient_id = ?
+                        `)
+                        .bind(viewerId, viewerId)
+                        .all();
+
+                    for (const f of (friendships.results || [])) {
+                        const otherId = f.requester_id === viewerId ? f.recipient_id : f.requester_id;
+                        friendshipByOtherId.set(otherId, f);
+                    }
+                }
+
+                const ONLINE_WINDOW_MS = 5 * 60 * 1000;
+                const now = Date.now();
+
+                const results = users.map(u => {
+                    let friendshipStatus = "not_friends";
+
+                    if (viewerId) {
+                        if (u.id === viewerId) {
+                            friendshipStatus = "self";
+                        } else {
+                            const f = friendshipByOtherId.get(u.id);
+
+                            if (f) {
+                                if (f.status === "accepted") {
+                                    friendshipStatus = "friends";
+                                } else if (f.status === "pending") {
+                                    friendshipStatus = f.requester_id === viewerId
+                                        ? "pending_outgoing"
+                                        : "pending_incoming";
+                                }
+                            }
+                        }
+                    }
+
+                    // last_seen is stored via SQLite's datetime('now'), e.g.
+                    // "2026-08-14 12:00:00" (UTC, no offset) -- normalize it
+                    // to ISO-8601 so Date.parse treats it as UTC correctly.
+                    const lastSeenMs = u.last_seen
+                        ? Date.parse(u.last_seen.replace(" ", "T") + "Z")
+                        : NaN;
+
+                    const online = !Number.isNaN(lastSeenMs) &&
+                        (now - lastSeenMs) < ONLINE_WINDOW_MS;
+
+                    return {
+                        id: u.id,
+                        username: u.username,
+                        online,
+                        friendship_status: friendshipStatus,
+                    };
+                });
+
+                return Response.json(results);
+
+            } catch (error) {
+                console.error("Search error:", error);
+
+                return Response.json({
+                    error: "Internal server error."
+                }, {
+                    status: 500
+                });
+            }
+        }
+
         if (url.pathname === "/api/signup" && request.method === "POST") {
             try {
                 const body = await request.json();
@@ -1033,6 +1153,7 @@ export default {
                 status: 404
             });
         }
+
         const assetResponse = await env.ASSETS.fetch(request);
 
         if (assetResponse.status === 404 && !url.pathname.includes(".")) {
