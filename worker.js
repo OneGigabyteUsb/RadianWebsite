@@ -559,6 +559,111 @@ export default {
             }
         }
 
+        // profilePage() in script.js fetches this for /profile/:id. Publicly
+        // viewable (no login required), but friendship_status is computed
+        // relative to whoever's session cookie is present, if any.
+        if (url.pathname.startsWith("/api/profile/") && request.method === "GET") {
+            try {
+                const profileId = Number(url.pathname.slice("/api/profile/".length));
+
+                if (!Number.isInteger(profileId)) {
+                    return Response.json({
+                        error: "Invalid user ID."
+                    }, {
+                        status: 400
+                    });
+                }
+
+                const user = await env.DB
+                    .prepare(`
+                        SELECT id, username, bio, visits, created_at,
+                               is_staff, is_moderator, shirt_id, last_seen
+                        FROM users
+                        WHERE id = ? AND is_deleted = 0
+                    `)
+                    .bind(profileId)
+                    .first();
+
+                if (!user) {
+                    return Response.json({
+                        error: "User not found."
+                    }, {
+                        status: 404
+                    });
+                }
+
+                const friendCountRow = await env.DB
+                    .prepare(`
+                        SELECT COUNT(*) AS count
+                        FROM friendships
+                        WHERE (requester_id = ? OR recipient_id = ?)
+                          AND status = 'accepted'
+                    `)
+                    .bind(user.id, user.id)
+                    .first();
+
+                // Figure out the viewer (if any) from the session cookie, so
+                // we can report friendship_status relative to them. Not
+                // being logged in just means "not_friends" everywhere.
+                let friendshipStatus = "not_friends";
+
+                const cookie = request.headers.get("Cookie") || "";
+                const match = cookie.match(/radian_session=([^;]+)/);
+
+                if (match) {
+                    const session = await env.DB
+                        .prepare("SELECT user_id FROM sessions WHERE session_id = ?")
+                        .bind(match[1])
+                        .first();
+
+                    if (session) {
+                        if (session.user_id === user.id) {
+                            friendshipStatus = "self";
+                        } else {
+                            const friendship = await env.DB
+                                .prepare(`
+                                    SELECT requester_id, recipient_id, status
+                                    FROM friendships
+                                    WHERE (requester_id = ? AND recipient_id = ?)
+                                       OR (requester_id = ? AND recipient_id = ?)
+                                    LIMIT 1
+                                `)
+                                .bind(session.user_id, user.id, user.id, session.user_id)
+                                .first();
+
+                            if (friendship) {
+                                if (friendship.status === "accepted") {
+                                    friendshipStatus = "friends";
+                                } else if (friendship.status === "pending") {
+                                    friendshipStatus = friendship.requester_id === session.user_id
+                                        ? "pending_outgoing"
+                                        : "pending_incoming";
+                                }
+                            }
+                        }
+                    }
+                }
+
+                return Response.json({
+                    ...user,
+                    friend_count: friendCountRow?.count ?? 0,
+                    // No followers table yet.
+                    follower_count: 0,
+                    following_count: 0,
+                    friendship_status: friendshipStatus,
+                });
+
+            } catch (error) {
+                console.error("Profile error:", error);
+
+                return Response.json({
+                    error: "Internal server error."
+                }, {
+                    status: 500
+                });
+            }
+        }
+
         if (url.pathname === "/api/signup" && request.method === "POST") {
             try {
                 const body = await request.json();
