@@ -36,10 +36,12 @@
 
       scene.environment = null;
 
-let mixer = null;
-let animationsMap = {};
-let currentAction = null;
-let currentState = "";
+      const loader = new GLTFLoader();
+
+      let mixer = null;
+      let animationsMap = {};
+      let currentAction = null;
+      let currentState = "";
 
       const sun = new THREE.DirectionalLight("#ffffff", 1.6);
       sun.position.set(30, 40, 20);
