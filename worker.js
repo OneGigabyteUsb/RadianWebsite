@@ -80,6 +80,16 @@ export default {
     async fetch(request, env) {
         const url = new URL(request.url);
 
+        // Serve the standalone player page for /play/:id instead of the SPA.
+        // URL bar stays /play/:id; play.html reads ?id= to resolve the map.
+        const playMatch = url.pathname.match(/^\/play\/([^/]+)\/?$/);
+        if (playMatch) {
+            const gameId = playMatch[1];
+            const assetUrl = new URL("/play.html", url);
+            assetUrl.searchParams.set("id", gameId);
+            return env.WEBSITE.fetch(new Request(assetUrl, request));
+        }
+
         if (url.pathname === "/api/me" && request.method === "GET") {
             const cookie = request.headers.get("Cookie") || "";
 
@@ -1154,10 +1164,10 @@ export default {
             });
         }
 
-        const assetResponse = await env.ASSETS.fetch(request);
+        const assetResponse = await env.WEBSITE.fetch(request);
 
         if (assetResponse.status === 404 && !url.pathname.includes(".")) {
-            return env.ASSETS.fetch(new URL("/index.html", url));
+            return env.WEBSITE.fetch(new URL("/index.html", url));
         }
 
         return assetResponse;
