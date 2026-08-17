@@ -107,7 +107,7 @@ gltf.scene.traverse((obj) => {
         obj.castShadow = false;
     }
 });
-scene.add(gltf)
+scene.add(gltf.scene)
 
       const controls = new OrbitControls( camera, renderer.domElement );
       camera.position.set( 1, 2, 3 );
