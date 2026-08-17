@@ -513,7 +513,7 @@ function animate() {
     const green = Math.floor(ratio * 255);
     const blue = 25;
 
-    healthBar.style.backgroundColor = `rgb(${red}, ${green}, ${blue})`;
+    // healthBar.style.backgroundColor = `rgb(${red}, ${green}, ${blue})`;
 
     if (playerHitboxMesh.position.y <= -100) {
        Health = 0;
