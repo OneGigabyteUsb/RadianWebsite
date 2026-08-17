@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="styles.css" />
+    <title>Best Settings</title>
+    <style>
+      html, body { margin: 0; padding: 0; overflow: hidden; }
+    </style>
+  </head>
+  <body>
+    <script type="module">
+      import * as THREE from 'https://esm.sh/three@0.174.0';
+      import { OrbitControls } from 'https://esm.sh/three@0.174.0/addons/controls/OrbitControls.js'
+      import { Sky } from 'https://esm.sh/three@0.174.0/addons/objects/Sky.js';
+      import { Part, Script, Frame, PointLight } from './Classes.js';
+      import { MaterialType } from './enums.js'
+      import { Health } from './Player.js'
+
+      // Scene and camera
+
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color('#ffffff');
+      const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
+      camera.position.z = 3;
+      window.scene = scene
+
+      window.camera = camera
+
+      let clicked = false
+      window.clicked = clicked
+
+      document.addEventListener("click", function(event) {
+         clicked = true;
+
+         setTimeout(() => {
+            clicked = false;
+         }, 1000);
+      });
+
+      // Renderer
+      const renderer = new THREE.WebGLRenderer({ antialias: true })
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.setSize(window.innerWidth, window.innerHeight)
+      document.body.appendChild(renderer.domElement)
+
+      scene.environment = null;
+
+      const sun = new THREE.DirectionalLight("#ffffff", 1.6);
+      sun.position.set(30, 40, 20);
+      sun.castShadow = true;
+      sun.shadow.normalBias = 0.02;
+      sun.shadow.mapSize.set(4048, 4048);
+      sun.shadow.camera.left = -50;
+      sun.shadow.camera.right = 50;
+      sun.shadow.camera.top = 50;
+      sun.shadow.camera.bottom = -50;
+      sun.shadow.camera.near = 1;
+      sun.shadow.camera.far = 110;
+      sun.shadow.bias = 0.0001;
+
+      window.sun = sun
+      scene.add(sun);
+      scene.add(sun.target);
+
+      scene.fog = new THREE.FogExp2( '#01A2DF', 0.025 );
+      window.fog = scene.fog
+      scene.background = new THREE.Color('#01A2DF');
+
+      const ambientLight = new THREE.AmbientLight( '#B3C4FF' );
+      scene.add(ambientLight)
+
+      const hemi = new THREE.HemisphereLight('#9FB4D5', '#2E2E2E', 0.9);
+      hemi.position.set(30, 40, 20);
+      scene.add(hemi);
+
+      const controls = new OrbitControls( camera, renderer.domElement );
+      camera.position.set( 1, 2, 3 );
+      camera.lookAt( 0, 0, 0 );
+      controls.update();
+
+      const floor = new Part({ x: 0, y: -0.5, z: 0, sx: 20, sy: 1, sz: 20, color: "#5cb85c", name: "floor" });
+      floor.addTo(scene)
+
+      const cube = new Part({ x: 0, y: 1.5, z: 0, sx: 1, sy: 1, sz: 1, color: "#ff0000", name: "cube" });
+      cube.addTo(scene)
+
+      const Light = new PointLight({ y: -0.5, parent: cube, intensity: 25, name: "cube", CastShadow: false, color: "#ff0000" });
+
+
+      window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+
+      renderer.setAnimationLoop(() => {
+        renderer.render(scene, camera);
+        controls.update();
+      });
+    </script>
+  </body>
+</html>
