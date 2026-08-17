@@ -78,6 +78,48 @@
       hemi.position.set(30, 40, 20);
       scene.add(hemi);
 
+let faceTexture = new THREE.TextureLoader().load("faces/default.png");
+faceTexture.colorSpace = THREE.SRGBColorSpace;
+faceTexture.flipY = false;
+
+let TShirt = new THREE.TextureLoader().load("t-shirts/Hoodie.png");
+TShirt.colorSpace = THREE.SRGBColorSpace;
+TShirt.flipY = false;
+
+const gltf = await loader.loadAsync( 'models/model.gltf' );
+gltf.scene.traverse((obj) => {
+    if (!obj.isMesh) return;
+    obj.receiveShadow = true;
+    obj.castShadow = true;
+
+    if (obj.name === "Head_1") {
+        obj.material = new THREE.MeshStandardMaterial({ color: "#b3b3b3", flatShading: false });
+    }
+    if (obj.name === "Torso_1") {
+        obj.material = new THREE.MeshStandardMaterial({ color: "#9c253b" });
+    }
+    if (obj.name === "Arm1") {
+        obj.material = new THREE.MeshStandardMaterial({ color: "#b3b3b3" });
+    }
+    if (obj.name === "Right2") {
+        obj.material = new THREE.MeshStandardMaterial({ color: "#b3b3b3" });
+        let RightArmPos = obj.position
+    }
+    if (obj.name === "Leg1" || obj.name === "Leg2") {
+        obj.material = new THREE.MeshStandardMaterial({ color: "#241616" });
+    }
+    if (["Face", "Face_1", "Face1"].includes(obj.name)) {
+        obj.material = new THREE.MeshStandardMaterial({ map: faceTexture, transparent: true });
+        obj.receiveShadow = true;
+        obj.castShadow = false;
+    }
+    if (obj.name === "T-shirt") {
+        obj.material = new THREE.MeshStandardMaterial({ map: TShirt, transparent: true });
+        obj.receiveShadow = true;
+        obj.castShadow = false;
+    }
+});
+
       const controls = new OrbitControls( camera, renderer.domElement );
       camera.position.set( 1, 2, 3 );
       camera.lookAt( 0, 0, 0 );
