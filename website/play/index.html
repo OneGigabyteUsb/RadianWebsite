@@ -14,6 +14,7 @@
       import * as THREE from 'https://esm.sh/three@0.174.0';
       import { OrbitControls } from 'https://esm.sh/three@0.174.0/addons/controls/OrbitControls.js'
       import { Sky } from 'https://esm.sh/three@0.174.0/addons/objects/Sky.js';
+      import { GLTFLoader } from 'https://esm.sh/three@0.174.0/addons/loaders/GLTFLoader.js';
       import { Part, Script, Frame, PointLight } from './Classes.js';
       import { MaterialType } from './enums.js'
       import { Health } from './Player.js'
@@ -49,6 +50,8 @@
       document.body.appendChild(renderer.domElement)
 
       scene.environment = null;
+
+      const loader = new GLTFLoader();
 
       const sun = new THREE.DirectionalLight("#ffffff", 1.6);
       sun.position.set(30, 40, 20);
