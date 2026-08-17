@@ -120,6 +120,9 @@ function router() {
     else if (path === "/banned") {
         bannedPage();
     }
+    else if (path === "/special-page") {
+      
+    }
     else {
         notFound();
     }
