@@ -274,7 +274,7 @@ gltf.scene.traverse((obj) => {
 const globalSound = new THREE.Audio(listener);
 
 const audioLoader = new THREE.AudioLoader();
-audioLoader.load('sound/jump.mp3', function(buffer) {
+audioLoader.load('sound/action_jump.wav', function(buffer) {
     globalSound.setBuffer(buffer);
     globalSound.setLoop(false);
     globalSound.setVolume(0.5);
@@ -621,7 +621,5 @@ function animate() {
 
     renderer.render(scene, camera);
 }
-
-
 
 animate();
