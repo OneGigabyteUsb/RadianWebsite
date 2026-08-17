@@ -110,6 +110,32 @@ gltf.scene.traverse((obj) => {
 gltf.scene.rotation.y = 3.14
 scene.add(gltf.scene)
 
+
+function fadeToAnimation(nextAnimationName) {
+    const nextAction = animationsMap[nextAnimationName.toLowerCase()];
+    if (!nextAction || currentAction === nextAction || lockedAnimation) return;
+
+    nextAction.reset();
+    nextAction.setEffectiveTimeScale(1);
+    nextAction.setEffectiveWeight(1);
+
+    if (nextAnimationName === "Point") {
+        nextAction.setLoop(THREE.LoopOnce, 1);
+        nextAction.clampWhenFinished = true;
+        lockedAnimation = true;
+    } else {
+        nextAction.setLoop(THREE.LoopRepeat);
+    }
+
+    if (currentAction) currentAction.crossFadeTo(nextAction, 0.2, true);
+
+    nextAction.play();
+    currentAction = nextAction;
+}
+
+fadeToAnimation("idle");
+currentState = "idle";
+
       const controls = new OrbitControls( camera, renderer.domElement );
       camera.position.set( 1, 2, 3 );
       camera.lookAt( 0, 0, 0 );
