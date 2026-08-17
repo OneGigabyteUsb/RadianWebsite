@@ -13,11 +13,6 @@
     <script type="module">
       import * as THREE from 'https://esm.sh/three@0.174.0';
       import { OrbitControls } from 'https://esm.sh/three@0.174.0/addons/controls/OrbitControls.js'
-      import { Sky } from 'https://esm.sh/three@0.174.0/addons/objects/Sky.js';
-      import { GLTFLoader } from 'https://esm.sh/three@0.174.0/addons/loaders/GLTFLoader.js';
-      import { Part, Script, Frame, PointLight } from './Classes.js';
-      import { MaterialType } from './enums.js'
-      import { Health } from './Player.js'
 
       // Scene and camera
 
@@ -28,17 +23,6 @@
       window.scene = scene
 
       window.camera = camera
-
-      let clicked = false
-      window.clicked = clicked
-
-      document.addEventListener("click", function(event) {
-         clicked = true;
-
-         setTimeout(() => {
-            clicked = false;
-         }, 1000);
-      });
 
       // Renderer
       const renderer = new THREE.WebGLRenderer({ antialias: true })
@@ -122,20 +106,12 @@ gltf.scene.traverse((obj) => {
         obj.castShadow = false;
     }
 });
+scene.add(gltf)
 
       const controls = new OrbitControls( camera, renderer.domElement );
       camera.position.set( 1, 2, 3 );
       camera.lookAt( 0, 0, 0 );
       controls.update();
-
-      const floor = new Part({ x: 0, y: -0.5, z: 0, sx: 20, sy: 1, sz: 20, color: "#5cb85c", name: "floor" });
-      floor.addTo(scene)
-
-      const cube = new Part({ x: 0, y: 1.5, z: 0, sx: 1, sy: 1, sz: 1, color: "#ff0000", name: "cube" });
-      cube.addTo(scene)
-
-      const Light = new PointLight({ y: -0.5, parent: cube, intensity: 25, name: "cube", CastShadow: false, color: "#ff0000" });
-
 
       window.addEventListener('resize', () => {
         camera.aspect = window.innerWidth / window.innerHeight;
