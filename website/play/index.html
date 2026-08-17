@@ -138,7 +138,9 @@ function fadeToAnimation(nextAnimationName) {
     currentAction = nextAction;
 }
 
-fadeToAnimation("idle");
+window.fadeToAnimation = fadeToAnimation
+
+fadeToAnimation("Idle");
 currentState = "idle";
 
       const controls = new OrbitControls( camera, renderer.domElement );
