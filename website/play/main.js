@@ -507,7 +507,7 @@ function animate() {
     requestAnimationFrame(animate);
     const ratio = Health / MaxHealth;
     const percentage = ratio * 100;
-    healthBar.style.width = percentage + 1 + "%";
+    // healthBar.style.width = percentage + 1 + "%";
 
     const red = Math.floor((1.5 - ratio) * 255);
     const green = Math.floor(ratio * 255);
@@ -621,5 +621,7 @@ function animate() {
 
     renderer.render(scene, camera);
 }
+
+
 
 animate();
