@@ -269,8 +269,6 @@ gltf.scene.traverse((obj) => {
     }
 });
 
-const cola = await loader.loadAsync( 'models/cola.gltf' );
-
 //---Sounds---\\\
 
 const globalSound = new THREE.Audio(listener);
@@ -308,8 +306,6 @@ if (gltf.animations && gltf.animations.length > 0) {
 gltf.scene.rotation.y = Math.PI;
 gltf.scene.position.z = 0.9;
 scene.add( gltf.scene );
-cola.scene.position.y = 4
-scene.add( cola.scene );
 
 //---HitBoxs---\\\
 const hitboxHeight = 3;
@@ -625,7 +621,5 @@ function animate() {
 
     renderer.render(scene, camera);
 }
-
-
 
 animate();
