@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <div class="Loading" id="load"=>
+      <div class="center">
+        <img src="https://uploads.onecompiler.io/432xr5hsr/44tq53sbh/%20RADIAN.png" width="420" alt="RADIAN">
+        <div class="bottom">
+          <h1>Loading Game</h1>
+          <img src="https://uploads.onecompiler.io/432xr5hsr/1783969519437/New%20Project%20(47).png" alt="Spinning Graphic" width="1" hieght="1" class="spinning-image" id="porje">
+        </div>
+      </div>
+        <div class="corner">
+            <h1>a</h1>
+        </div>
+    </div>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RADIAN | Demo</title>
+    <div id="ui-container">
+      <div class="topbar">
+        <div class="topbar-left">
+          <button id="menuButton" class="icon-button" aria-label="Open menu">
+            <img
+              src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.4' stroke-linecap='round'><line x1='3' y1='6' x2='21' y2='6'/><line x1='3' y1='12' x2='21' y2='12'/><line x1='3' y1='18' x2='21' y2='18'/></svg>"
+              alt="Menu"
+            />
+          </button>
+
+          <div class="chat-anchor">
+            <button id="chatButton" class="icon-button" aria-label="Open chat">
+              <img
+                src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linejoin='round' stroke-linecap='round'><path d='M4 5h16v10H8l-4 4V5z'/></svg>"
+                alt="Chat"
+              />
+            </button>
+
+            <div id="chatMenu" class="chat-dropdown hidden">
+              <div class="chat-log">
+              </div>
+              <div class="chat-input-row">
+                <input id="chatInput" class="chat-input" type="text" placeholder="Click here to type..." />
+                <button id="sendChatButton" class="menu-item chat-send-button">Send</button>
+              </div>
+            </div>
+          </div>
+
+          <button id="emoteButton" class="icon-button" aria-label="Open emotes">
+            <img
+              src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2'><circle cx='12' cy='12' r='9'/><path d='M8.5 14c1 1.1 2.2 1.7 3.5 1.7s2.5-.6 3.5-1.7' stroke-linecap='round'/><circle cx='9' cy='10' r='1' fill='white' stroke='none'/><circle cx='15' cy='10' r='1' fill='white' stroke='none'/></svg>"
+              alt="Emotes"
+            />
+          </button>
+        </div>
+
+        <div class="topbar-right">
+          <div class="hud-label">Health</div>
+          <div class="health-bar-frame">
+            <div class="health-bar-container">
+              <div id="health-fill"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="start-menu" class="menu-modal">
+        <div id="centerMenu" class="menu hidden">
+          <h2>Game Menu</h2>
+          <button id="resumeButton" class="menu-item resume-button">Resume</button>
+          <button id="resetButton" class="menu-item reset-button">Reset Character</button>
+          <button id="leaveButton" class="menu-item leave-button" herf="/home">Leave</button>
+          <div class="slider-container">
+            <label for="Graphics" class="a">Graphics:</label>
+            <input type="range" id="volume" name="Graphics" min="1" max="5" value="1">
+          </div>
+        </div>
+      </div>
+  <style>
+:root {
+  --panel: #0000009d;
+  --border: rgba(255, 255, 255, 0.14);
+  --muted-bg: rgba(255, 255, 255, 0.06);
+  --text: #f2f2f5;
+  --text-dim: rgb(255, 255, 255);
+
+  --green: #4ade80;
+  --red: #ff6b6b;
+  --gray: #a7abb3;
+}
+
+body {
+  margin: 0;
+  overflow: hidden;
+  font-family: Arial, Helvetica, sans-serif;
+  background:
+    radial-gradient(circle at top, rgba(168, 88, 88, 0), transparent 45%),
+    linear-gradient(180deg, #1f1010 0%, #170c0d 100%);
+}
+
+.Loading {
+  height: 100vh;
+  width: 100%;
+  z-index: 11;
+  box-sizing: border-box;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(circle at top, rgba(96, 40, 40, 1), transparent 45%),
+    linear-gradient(180deg, #391e1e 0%, #200f0f 100%);
+}
+
+#centerEmote {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 340px;
+  max-width: 88vw;
+  padding: 28px 24px 24px;
+  box-sizing: border-box;
+  text-align: center;
+
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+}
+
+.emote-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.emote-button {
+  background-color: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+
+
+.corner {
+  position: absolute;
+  right: 20px;
+  bottom: 0;
+  color: white;
+}
+
+.center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.bottom {
+  text-align: center;
+  color: white;
+}
+
+canvas {
+  display: block;
+}
+
+#volume {
+   
+}
+
+.spinning-image {
+  width: 120px;
+  height: 120px;
+  animation: spin 2s linear infinite;
+
+  transform-origin: center;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.chat-anchor {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+
+.chat-dropdown {
+  position: absolute;
+  top: 66px;
+  left: 0;
+  width: 50vh;
+  padding: 12px;
+  box-sizing: border-box;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  pointer-events: auto;
+}
+
+.chat-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#sendChatButton {
+  width: auto;
+  flex-shrink: 0;
+  white-space: nowrap;
+  margin-top: 0; /* .menu-item (used elsewhere) sets margin-top: 10px and
+                    appears later in this stylesheet, so this needs the
+                    ID's higher specificity to actually win */
+}
+
+.chat-input {
+  flex: 1;
+  min-width: 0; /* lets a flex item actually shrink instead of overflowing */
+  padding: 8px 16px;
+  font-size: 16px;
+  font-family: inherit;
+  color: white;
+  background-color: var(--muted-bg);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+}
+
+.chat-input::placeholder {
+  color: #9f9f9f;
+}
+
+.chat-log {
+  max-height: 180px;
+  height: 16vh;
+  overflow-y: auto;
+  text-align: left;
+  padding: 10px;
+  margin-bottom: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 14px;
+}
+
+.chat-message {
+  margin-bottom: 8px;
+}
+
+#ui-container {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+  box-sizing: border-box;
+}
+
+.a {
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+/* ---------- Top bar: flat, transparent, native-chrome style ---------- */
+.topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px;
+  box-sizing: border-box;
+  pointer-events: none;
+  background: var(--panel);
+}
+
+.slider-container {
+  pointer-events: auto;
+}
+     
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  pointer-events: auto;
+  height: 100%;
+}
+
+.icon-button {
+  pointer-events: auto;
+  background: none;
+  border: none;
+  padding: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0.92;
+  transition: opacity 0.12s ease;
+}
+
+.icon-button:hover {
+  opacity: 1;
+}
+
+.icon-button img {
+  width: 26px;
+  height: 26px;
+  display: block;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.7));
+}
+
+.topbar-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  pointer-events: auto;
+  border-radius: 10px;
+  padding: 8px 12px;
+  box-sizing: border-box;
+}
+
+.health-bar-frame {
+  width: 180px;
+  height: 12px;
+  padding: 2px;
+  /*background: rgba(0, 0, 0, 0.35); */
+  border-radius: 999px;
+  box-sizing: border-box;
+}
+
+.health-bar-container {
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+#health-fill {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, #58d98a, #2bbf67);
+  border-radius: 999px;
+  transition: width 0.3s ease-in-out;
+}
+
+.hud-label {
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+  padding-right: 1vh; 
+}
+
+/* ---------- Menu modal: simple, flat, no candy ---------- */
+.menu {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 340px;
+  max-width: 88vw;
+  padding: 28px 24px 24px;
+  box-sizing: border-box;
+  text-align: center;
+
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+}
+
+.menu h2 {
+  margin: 0 0 22px;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0.02em;
+}
+
+.hidden {
+  display: none;
+}
+
+.menu-item {
+  pointer-events: auto;
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  padding: 12px 14px;
+  box-sizing: border-box;
+  background: var(--muted-bg);
+  border: 1px solid var(--border);
+  border-bottom: 3px solid var(--gray);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  transition: background-color 0.15s ease;
+}
+
+.menu-item:first-of-type {
+  margin-top: 0;
+}
+
+.menu-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.resume-button {
+  border-bottom-color: var(--green);
+}
+
+.reset-button {
+  border-bottom-color: var(--red);
+}
+
+.leave-button {
+  border-bottom-color: var(--gray);
+  color: var(--text-dim);
+}
+
+  </style>
+
+  <script async src="https://unpkg.com/es-module-shims@1.6.3/dist/es-module-shims.js"></script>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.174.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.174.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+
+<body data-game-id="2">
+
+  <script>
+    fetch('/api/me', { credentials: 'include' })
+      .then((r) => {
+        if (!r.ok) window.location.href = '/home';
+      })
+      .catch(() => { window.location.href = '/home'; });
+  </script>
+
+  <!-- THIS is the only JS link -->
+  <script type="module" src="main.js"></script>
+
+</body>
+</html>
