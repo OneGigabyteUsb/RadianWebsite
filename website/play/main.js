@@ -1,34 +1,209 @@
-import * as THREE from 'three'
+import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { OBB } from "three/addons/math/OBB.js";
+import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
+
+THREE.Cache.enabled = true;
 
 const scene = new THREE.Scene()
-scene.background = new THREE.Color(0x01A2DF);
 
+//=====ServerPath=====\\
+function getServerIdFromPath() {
+    const parts = window.location.pathname.split('/').filter(Boolean);
+    if (parts.length >= 2 && parts[0] === 'play') return parts[1];
+    return null;
+}
+const GAME_ID = getServerIdFromPath() || document.body.dataset.gameId || 'main';
+
+//=====Variables=====\\
 let velocityY = 0;
 const gravity = -0.03;
+let isClimbing = false;
+const climbSpeed = 0.12;
+const CLIMB_STICK = 0.05;
+const climbNormal = new THREE.Vector3();
+const climbLaunchVelocity = new THREE.Vector3();
+const CLIMB_LAUNCH_SPEED = 5;
+const CLIMB_LAUNCH_DAMPING = 3.5;
 const groundY = 0;
 let Siftlock = false
 let Health = 100
 let MaxHealth = 100
 let ItemHeld = false
 
-let JumpPower = 0.55;
+let Grafic = 1;
+
+let Paused = false;
+let Siting = false;
+let sitCooldown = 0;
+const SIT_COOLDOWN_TIME = 20;
+const SEAT_HEIGHT_OFFSET = 0.55;
+
+let delta;
+let dt;
+const terminalVelocity = 3;
+
+let r;
+let g;
+let b;
+
+let target;
+
+const charForward = new THREE.Vector3();
+let isFacingWall;
+let pushOverlap;
+let isVertical;
+
+let hit;
+
+let clock;
+
+let ratio;
+let percentage;
+
+const lockQuaternion = new THREE.Quaternion();
+const targetQuaternion = new THREE.Quaternion();
+const UP_AXIS = new THREE.Vector3(0, 1, 0);
+const heightOffset = 2.7;
+let targetRotationY;
+
+let walkAnim;
+let idleAnim;
+
+let forwardX;
+let forwardZ;
+let rightX;
+let rightZ;
+
+//=====Html Elements=====\\
+const menuButton = document.getElementById('menuButton');
+const chatButton = document.getElementById('chatButton');
+const emoteButton = document.getElementById('emoteButton');
+const loadingScreen = document.getElementById('load');
+
+const centerMenu = document.getElementById('centerMenu');
+const resumeButton = document.getElementById('resumeButton');
+const resetButton = document.getElementById('resetButton');
+const leaveButton = document.getElementById('leaveButton');
+const fill = document.getElementById('health-fill');
+const GraficsSlider = document.getElementById('volume');
+
+menuButton.addEventListener('click', function (event) {
+   Paused = true;
+	event.stopPropagation();
+	centerMenu.classList.remove('hidden');
+});
+
+centerMenu.addEventListener('click', function (event) {
+	event.stopPropagation();
+});
+
+resumeButton.addEventListener('click', function () {
+   Paused = false;
+	centerMenu.classList.add('hidden');
+});
+resetButton.addEventListener('click', function () {
+	Health = 0
+   Paused = false;
+	centerMenu.classList.add('hidden');
+});
+
+leaveButton.addEventListener('click', function () {
+	console.log('Leave clicked');
+});
+
+document.addEventListener('click', function () {
+	if (!centerMenu.classList.contains('hidden')) {
+      Paused = false;
+		centerMenu.classList.add('hidden');
+	}
+	if (!chatMenu.classList.contains('hidden')) {
+		chatMenu.classList.add('hidden');
+	}
+});
+
+const chatMenu = document.getElementById('chatMenu');
+const chatLog = chatMenu.querySelector('.chat-log');
+const chatInput = document.getElementById('chatInput');
+const sendChatButton = document.getElementById('sendChatButton');
+
+chatButton.addEventListener('click', function (event) {
+	event.stopPropagation();
+	chatMenu.classList.toggle('hidden');
+	if (!chatMenu.classList.contains('hidden')) chatInput.focus();
+});
+
+chatMenu.addEventListener('click', function (event) {
+	event.stopPropagation();
+});
+
+chatInput.addEventListener('keydown', function (event) {
+	event.stopPropagation();
+	if (event.key === 'Enter') sendChatMessage();
+});
+
+sendChatButton.addEventListener('click', function (event) {
+	event.stopPropagation();
+	sendChatMessage();
+});
+
+emoteButton.addEventListener('click', function (event) {
+	event.stopPropagation();
+	console.log('Emote... does nothing >:3');
+});
+
+
+//=====Chat Messages=====\\
+function sendChatMessage() {
+	const text = chatInput.value.trim();
+	if (!text) return;
+	if (multiplayerSocket.readyState === WebSocket.OPEN) {
+		multiplayerSocket.send(JSON.stringify({ type: 'chat', text }));
+	}
+	chatInput.value = '';
+}
+
+function appendChatMessage(username, text) {
+	const line = document.createElement('div');
+	line.className = 'chat-message';
+	const strong = document.createElement('strong');
+	strong.textContent = `${username}: `;
+	line.appendChild(strong);
+	line.appendChild(document.createTextNode(text));
+	chatLog.appendChild(line);
+	chatLog.scrollTop = chatLog.scrollHeight;
+}
+
+//=====Player Stuff=====\\
+let JumpPower = 0.54;
 let WalkSpeed = -0.18;
 let spawn = new THREE.Vector3();
+
+function SetSpawn(x,y,z) {
+   spawn = new THREE.Vector3(x,y,z);
+}
 
 const healthBar = document.getElementById("health-bar");
 const title = document.getElementById("title");
 
 const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 )
 camera.rotation.order = 'YXZ';
-window.camera = camera
 
 let theta = 0;
 let phi = 0;
 let distance = 8;
 const sensitivity = 0.007;
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+const FIRST_PERSON_DISTANCE = 1.2;
+const FIRST_PERSON_FADE_START = 2.5;
+const characterMeshes = [];
+
+const CAMERA_COLLISION_BUFFER = 0.3;
+const cameraRaycaster = new THREE.Raycaster();
+const cameraPivot = new THREE.Vector3();
+const cameraDir = new THREE.Vector3();
 
 
 let isDragging = false;
@@ -38,6 +213,126 @@ const listener = new THREE.AudioListener();
 camera.add(listener);
 
 const activeParts = [];
+const dynamicParts = [];
+const collidableMeshes = [];
+const sharedTextureLoader = new THREE.TextureLoader();
+const textureCache = new Map();
+const materialCache = new Map();
+const geometryCache = new Map();
+
+function getCachedTexture(url, repeatX, repeatZ) {
+    const key = `${url}|${repeatX}|${repeatZ}`;
+    let tex = textureCache.get(key);
+    if (!tex) {
+        tex = sharedTextureLoader.load(url);
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.wrapS = THREE.RepeatWrapping;
+        tex.wrapT = THREE.RepeatWrapping;
+        tex.repeat.set(repeatX, repeatZ);
+        textureCache.set(key, tex);
+    }
+    return tex;
+}
+
+function getCachedMaterial(key, factory) {
+    let mat = materialCache.get(key);
+    if (!mat) {
+        mat = factory();
+        materialCache.set(key, mat);
+    }
+    return mat;
+}
+
+const MATERIALS = {
+    plastic: "textures/Plastic.png",
+    grass: "textures/Grass.png",
+    wood: "textures/Wood.png",
+    planks: "textures/Planks.png",
+    stone: "textures/Stone.png",
+    pebble: "textures/Pebble.png",
+    brick: "textures/Brick.png",
+    concrete: "textures/concrete.png"
+};
+
+class BasicClass {
+    constructor({
+       name = ""
+    }) {
+       this.name = name
+    }
+}
+
+class Part extends BasicClass {
+    constructor(data) {
+        super(data);
+
+       this.x = data.x ?? 0;
+       this.y = data.y ?? 0;
+       this.z = data.z ?? 0;
+
+       this.sx = data.sx ?? 1;
+       this.sy = data.sy ?? 1;
+       this.sz = data.sz ?? 1;
+
+       this.rx = data.rx ?? 0;
+       this.ry = data.ry ?? 0;
+       this.rz = data.rz ?? 0;
+
+       this.shape = data.shape ?? "Block";
+       this.material = data.material ?? null;
+       this.killbrick = data.killbrick ?? false;
+       this.CanCollide = data.CanCollide ?? false;
+       this.isSpawnLocation = data.isSpawnLocation ?? false;
+       this.IsClimbable = data.IsClimbable ?? false;
+       this.Siting = data.Siting ?? false;
+       this.Anchored = data.Anchored ?? false;
+
+       this.color = data.color ?? "#ffffff";
+       this.transparency = data.transparency ?? 0;
+
+        const color = this.color
+       
+        let geometry = new THREE.BoxGeometry(this.sx, this.sy, this.sz);
+        let mat = new THREE.MeshStandardMaterial({ color });
+
+        this.mesh = new THREE.Mesh(geometry, mat);
+        this.mesh.castShadow = true
+        this.mesh.receiveShadow = true
+    }
+   
+    addTo(targetScene) {
+        targetScene.add(this.mesh);
+    }
+}
+
+class Sound extends BasicClass {
+    constructor(data) {
+       super(data);
+
+       this.x = data.x ?? 0;
+       this.y = data.y ?? 0;
+       this.z = data.z ?? 0;
+
+       this.Sound = data.sound ?? "sounds/test.wav";
+       this.volume = data.volume ?? 0.5;
+       this.loop = data.loop ?? false
+    }
+    Play() {
+        const sound = new THREE.PositionalAudio(listener);
+        const audioLoader = new THREE.AudioLoader();
+        sound.position.set(this.x, this.y, this.z);
+
+        audioLoader.load(this.Sound, (buffer) => {
+            sound.setBuffer(buffer);
+            sound.setLoop(this.loop);
+            sound.setVolume(this.volume);
+            sound.play();
+        });
+    }
+}
+
+window.Part = Part
+window.Sound = Sound
 
 class CreatePart {
     constructor({
@@ -45,48 +340,91 @@ class CreatePart {
         sx = 1, sy = 1, sz = 1,
         rx = 0, ry = 0, rz = 0,
         color = "#ffffff",
-        topTexture = "texture.png",
-        bottomTexture = "texture2.png",
+
+        material = null,
+
         killbrick = false,
-        name = "part"
+        CanCollide = false,
+        isSpawnLocation = false,
+        Transparency = 1,
+        IsClimbable = false,
+        Siting = false,
+        Anchored = true
     } = {}) {
         this.killbrick = killbrick;
-        const geometry = new THREE.BoxGeometry(sx, sy, sz);
-        let sideMat = new THREE.MeshStandardMaterial({ color });
-        let topMat = sideMat;
-        let bottomMat = sideMat;
+        this.isSpawnLocation = isSpawnLocation;
+        this.CanCollide = CanCollide;
+        this.IsClimbable = IsClimbable;
+        this.Anchored = Anchored;
+        this.velocity = new THREE.Vector3();
+        this._grounded = false;
 
-        if (topTexture) {
-            const tex = new THREE.TextureLoader().load(topTexture);
-            const tex2 = new THREE.TextureLoader().load(bottomTexture);
+        this.x = x
+        this.y = y
+        this.z = z
+        this.sx = sx
+        this.sy = sy
+        this.sz = sz
+        this.rx = rx
+        this.ry = ry
+        this.rz = rz
 
-            [tex, tex2].forEach(t => {
-                t.colorSpace = THREE.SRGBColorSpace;
-                t.wrapS = THREE.RepeatWrapping;
-                t.wrapT = THREE.RepeatWrapping;
-            });
+        this.Siting = Siting
 
-            tex.repeat.set(sx / 2.5, sz / 2.5);
-            tex2.repeat.set(sx / 2.5, sz / 2.5);
+        const texturePath = material && MATERIALS[material] ? MATERIALS[material] : null;
 
-            //---Load Mesh With Texture Bro---\\
+        this.def = {
+            x, y, z, sx, sy, sz, rx, ry, rz, color, material,
+            killbrick, CanCollide, isSpawnLocation, IsClimbable, Anchored,
+            Transparency
+        };
 
-            topMat = new THREE.MeshStandardMaterial({ color, map: tex });
-            bottomMat = new THREE.MeshStandardMaterial({ color, map: tex2 });
-            sideMat = new THREE.MeshStandardMaterial({ color });
+        const geomKey = `${sx}|${sy}|${sz}`;
+        let geometry = geometryCache.get(geomKey);
+        if (!geometry) {
+            geometry = new THREE.BoxGeometry(sx, sy, sz);
+            geometryCache.set(geomKey, geometry);
+        }
+        const TILE_SIZE = 2.5;
+        const repeatX = sx / TILE_SIZE;
+        const repeatZ = sz / TILE_SIZE;
+        const repeatY = sy / TILE_SIZE;
+
+        let mat;
+        if (texturePath) {
+            const topTex = getCachedTexture(texturePath, repeatX, repeatZ);
+            const topBottomMat = getCachedMaterial(`mat-tb|${color}|${texturePath}|${repeatX}|${repeatZ}`, () => new THREE.MeshStandardMaterial({ color, map: topTex }));
+
+           
+            const sideTexX = getCachedTexture(texturePath, repeatZ, repeatY);
+            const sideTexZ = getCachedTexture(texturePath, repeatX, repeatY);
+            const sideMatX = getCachedMaterial(`mat-sideX|${color}|${texturePath}|${repeatZ}|${repeatY}`, () => new THREE.MeshStandardMaterial({ color, map: sideTexX }));
+            const sideMatZ = getCachedMaterial(`mat-sideZ|${color}|${texturePath}|${repeatX}|${repeatY}`, () => new THREE.MeshStandardMaterial({ color, map: sideTexZ }));
+
+            mat = [sideMatX, sideMatX, topBottomMat, topBottomMat, sideMatZ, sideMatZ];
+        } else {
+            mat = getCachedMaterial(`plain|${color}`, () => new THREE.MeshStandardMaterial({ color }));
         }
 
-        const materials = [sideMat, sideMat, topMat, bottomMat, sideMat, sideMat];
-        this.mesh = new THREE.Mesh(geometry, materials);
+        this.mesh = new THREE.Mesh(geometry, mat);
+        //this.mesh.transparent = true;
+        //this.mesh.opacity = Transparency;
         this.mesh.position.set(x, y, z);
-        this.mesh.rotation.set(0, 0, 0);
+        this.mesh.rotation.set(rx, ry, rz);
         this.mesh.castShadow = true;
         this.mesh.receiveShadow = true;
 
-        this.boundingBox = new THREE.Box3();
-        this.updateHitbox();
+        this.localOBB = new OBB(
+            new THREE.Vector3(0, 0, 0),
+            new THREE.Vector3(sx / 2, sy / 2, sz / 2)
+        );
+        this.obb = this.localOBB.clone();
+
+        this.boundingRadius = Math.sqrt((sx / 2) ** 2 + (sy / 2) ** 2 + (sz / 2) ** 2);
 
         activeParts.push(this);
+        if (!this.Anchored) dynamicParts.push(this);
+        if (!this.CanCollide) collidableMeshes.push(this.mesh);
     }
 
     addTo(targetScene) {
@@ -94,24 +432,101 @@ class CreatePart {
     }
 
     updateHitbox() {
-        this.boundingBox.setFromObject(this.mesh); 
+        this.mesh.updateMatrixWorld(true);
+        this.obb.copy(this.localOBB);
+        this.obb.applyMatrix4(this.mesh.matrixWorld);
     }
 }
 
+function getOBBAxes(obb, out) {
+    const e = obb.rotation.elements;
+    out[0].set(e[0], e[1], e[2]);
+    out[1].set(e[3], e[4], e[5]);
+    out[2].set(e[6], e[7], e[8]);
+    return out;
+}
+
+function projectedRadius(obb, axes, axis) {
+    return (
+        obb.halfSize.x * Math.abs(axis.dot(axes[0])) +
+        obb.halfSize.y * Math.abs(axis.dot(axes[1])) +
+        obb.halfSize.z * Math.abs(axis.dot(axes[2]))
+    );
+}
+
+const _axesA = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
+const _axesB = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
+const _testAxes = Array.from({ length: 15 }, () => new THREE.Vector3());
+const _centerDelta = new THREE.Vector3();
+const _minAxis = new THREE.Vector3();
+const _obbHit = { axis: new THREE.Vector3(), overlap: 0 };
+const _pushVec = new THREE.Vector3();
+
+function resolveOBBOverlap(a, b) {
+    getOBBAxes(a, _axesA);
+    getOBBAxes(b, _axesB);
+
+    let axisCount = 0;
+    for (let i = 0; i < 3; i++) _testAxes[axisCount++].copy(_axesA[i]);
+    for (let i = 0; i < 3; i++) _testAxes[axisCount++].copy(_axesB[i]);
+    for (let i = 0; i < 3; i++) {
+        for (let j = 0; j < 3; j++) {
+            const cross = _testAxes[axisCount];
+            cross.crossVectors(_axesA[i], _axesB[j]);
+            if (cross.lengthSq() > 1e-8) {
+                cross.normalize();
+                axisCount++;
+            }
+        }
+    }
+
+    _centerDelta.copy(a.center).sub(b.center);
+
+    let minOverlap = Infinity;
+    let found = false;
+
+    for (let k = 0; k < axisCount; k++) {
+        const axis = _testAxes[k];
+        const rA = projectedRadius(a, _axesA, axis);
+        const rB = projectedRadius(b, _axesB, axis);
+        const dist = Math.abs(_centerDelta.dot(axis));
+        const overlap = rA + rB - dist;
+
+        if (overlap <= 0) return null;
+
+        if (overlap < minOverlap) {
+            minOverlap = overlap;
+            found = true;
+            _minAxis.copy(axis);
+            if (_centerDelta.dot(_minAxis) < 0) _minAxis.negate();
+        }
+    }
+
+    if (!found) return null;
+    _obbHit.axis.copy(_minAxis);
+    _obbHit.overlap = minOverlap;
+    return _obbHit;
+}
+
 const renderer = new THREE.WebGLRenderer({ antialias: true })
+// renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = THREE.PCFShadowMap; //PCFShadowMap;
 renderer.setSize(window.innerWidth, window.innerHeight)
 document.body.appendChild(renderer.domElement)
 
-let modelReady = false;   // flips true once the gltf character has loaded
-let pendingSpawn = null;  // a spawn point waiting for the model to be ready
+scene.environment = null;
+
+let modelReady = false;
+let pendingSpawn = null;
 let currentMapData = null;
-let SpawnLocation = new THREE.Vector3();
 
 function clearMap() {
     activeParts.forEach(part => scene.remove(part.mesh));
     activeParts.length = 0;
+    dynamicParts.length = 0;
+    collidableMeshes.length = 0;
 }
 
 function loadMap(mapData) {
@@ -123,18 +538,17 @@ function loadMap(mapData) {
     });
  
     currentMapData = mapData;
- 
+
+    SetSpawn(0,0,0)
+
     if (mapData.spawn) {
         if (modelReady === true) {
-            Health = 0;
+            gltf.scene.position.set(spawn.x, spawn.y, spawn.z);
             velocityY = 0;
         } else {
             pendingSpawn = mapData.spawn;
         }
     }
-    SpawnLocation.x = mapData.spawn.x;
-    SpawnLocation.y = mapData.spawn.y;
-    SpawnLocation.z = mapData.spawn.z;
 }
 
 async function loadMapFromURL(url) {
@@ -146,7 +560,7 @@ async function loadMapFromURL(url) {
 }
 
 window.loadMap = loadMap;
-window.CreatePart = new CreatePart
+window.CreatePart = CreatePart;
 window.THREE = THREE;
 window.scene = scene;
 window.spawn = spawn;
@@ -167,7 +581,7 @@ function serializeCurrentMap(name, author) {
 const loader = new GLTFLoader();
 const controls = new OrbitControls(camera, renderer.domElement)
 
-const ambientLight = new THREE.AmbientLight( 0x616161 );
+const ambientLight = new THREE.AmbientLight( '#B3C4FF' );
 scene.add(ambientLight)
 
 const defaultMap = {
@@ -176,14 +590,47 @@ const defaultMap = {
     parts: [
         { x: 0, y: -0.5, z: 0, sx: 60, sy: 1, sz: 60, color: "#5cb85c" },
         { x: 10, y: 2, z: -10, sx: 10, sy: 4, sz: 10, color: "#6e6e6e" },
-        { x: 0, y: 0.5, z: 0, sx: 1, sy: 1, sz: 1, color: "#304173" }
+        { x: 0, y: 0.5, z: 0, sx: 1, sy: 1, sz: 1, Siting: true, color: "#304173" }
     ]
 };
 
 window.defaultMap = defaultMap;
 window.loadMapFromURL = loadMapFromURL;
 window.clearMap = clearMap;
-loadMap(defaultMap);
+
+/**
+ * Loads the map for whichever game this page was opened for. Looks up
+ * GAME_ID (from the /play/<id> URL) in the site's game catalog to find
+ * that game's name, then loads maps/<name>_<id>.json -- matching the
+ * "name_id" file naming convention. Falls back to the old hardcoded demo
+ * map if anything about that lookup fails, so a bad/missing map file
+ * doesn't leave the page stuck blank.
+ */
+async function loadMapForCurrentGame() {
+    if (GAME_ID === '1') {
+        return loadMapFromURL("maps/Demo.json");
+    }
+    if (GAME_ID === '2') {
+        return loadMapFromURL("maps/a.json");
+    }
+
+    try {
+        const res = await fetch('/api/games.json');
+        if (!res.ok) throw new Error(`games.json fetch failed: ${res.status}`);
+        const games = await res.json();
+
+        const game = games.find(g => String(g.Id) === String(GAME_ID));
+        if (!game) throw new Error(`No game with id ${GAME_ID} in the catalog`);
+
+        const mapPath = `maps/${game.name}_${game.Id}.json`;
+        return await loadMapFromURL(mapPath);
+    } catch (err) {
+        console.warn('[map] could not load map for this game, falling back to the demo map:', err);
+        return loadMapFromURL("maps/Demo.json");
+    }
+}
+
+await loadMapForCurrentGame();
 
 
 //const floor = new CreatePart({ x: 0, y: -0.5, z: 0, sx: 60, sy: 1, sz: 60, color: "#5cb85c" });
@@ -203,22 +650,28 @@ loadMap(defaultMap);
 //const cube2 = new CreatePart({ x: 0, y: 0.5, z: 0, sx: 1, sy: 1, sz: 1, color: "#304173" });
 //cube2.addTo(scene);
 
-const hemi = new THREE.HemisphereLight(0xbfd9ff, 0x1a1a1a, 0.9);
+const hemi = new THREE.HemisphereLight('#9FB4D5', '#2E2E2E', 0.9);
+hemi.position.set(30, 40, 20);
 scene.add(hemi);
 
-const directionalLight = new THREE.DirectionalLight( 0xcfcfcf, 2.5 );
-directionalLight.castShadow = true;
-directionalLight.position.set(30, 40, 30); 
-directionalLight.shadow.mapSize.set(6096, 6096);
+const sun = new THREE.DirectionalLight(0xffffff, 1.6);
+sun.position.set(30, 40, 20);
+sun.castShadow = true;
+sun.shadow.normalBias = 0.02;
+sun.shadow.camera = new THREE.OrthographicCamera(-50, 50, 50, -50, 0.5, 500);
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.left = -30;
+sun.shadow.camera.right = 30;
+sun.shadow.camera.top = 30;
+sun.shadow.camera.bottom = -30;
+sun.shadow.camera.near = 1;
+sun.shadow.camera.far = 110;
+sun.shadow.bias = 0.0001;
+scene.add(sun);
+scene.add(sun.target);
 
-const d = 150; 
-directionalLight.shadow.camera.left = -d;
-directionalLight.shadow.camera.right = d;
-directionalLight.shadow.camera.top = d;
-directionalLight.shadow.camera.bottom = -d;
-directionalLight.shadow.camera.near = 0.1;
-directionalLight.shadow.camera.far = 1000;
-scene.add(directionalLight);
+scene.fog = new THREE.FogExp2( '#01A2DF', 0.01 );
+scene.background = new THREE.Color('#01A2DF');
 
 let mixer = null;
 let animationsMap = {};
@@ -227,13 +680,9 @@ let currentState = "";
 let lockedAnimation = false;
 let isGrounded = true;
 
-let faceTexture = new THREE.TextureLoader().load("faces/default.png");
+let faceTexture = sharedTextureLoader.load("faces/default.png");
 faceTexture.colorSpace = THREE.SRGBColorSpace;
 faceTexture.flipY = false;
-
-let TShirt = new THREE.TextureLoader().load("t-shirts/Hoodie.png");
-TShirt.colorSpace = THREE.SRGBColorSpace;
-TShirt.flipY = false;
 
 const gltf = await loader.loadAsync( 'models/model.gltf' );
 gltf.scene.traverse((obj) => {
@@ -263,11 +712,224 @@ gltf.scene.traverse((obj) => {
         obj.castShadow = false;
     }
     if (obj.name === "T-shirt") {
-        obj.material = new THREE.MeshStandardMaterial({ map: TShirt, transparent: true });
+        // No shirt equipped yet by default -- equipShirt() below shows
+        // this and sets its texture once avatar data comes back.
+        obj.material = new THREE.MeshStandardMaterial({ transparent: true });
+        obj.visible = false;
         obj.receiveShadow = true;
         obj.castShadow = false;
     }
+
+    obj.material.transparent = true;
+    characterMeshes.push(obj);
 });
+
+//---Avatar Colors---\\\
+// Maps the avatar builder's part keys (head/torso/right_arm/left_arm/
+// right_leg/left_leg -- same keys as avatars.json on the server) to the
+// mesh names inside models/model.gltf. Leg1/Leg2 -> left_leg/right_leg is
+// a guess based on typical rig ordering; if the legs come out swapped
+// in-game, just flip which one maps to which here.
+const AVATAR_PART_MESH_NAMES = {
+    head: ["Head_1"],
+    torso: ["Torso_1"],
+    left_arm: ["Arm1"],
+    right_arm: ["Right2"],
+    left_leg: ["Leg1"],
+    right_leg: ["Leg2"],
+};
+
+/**
+ * Recolors a character root (your own gltf.scene, or a remote player's
+ * SkeletonUtils clone) to match a fetched avatar's colors. Clones each
+ * targeted mesh's material the first time it's touched -- SkeletonUtils
+ * .clone()/Object3D.clone() share material *references* by default, so
+ * without this, recoloring one player's torso would recolor everyone's.
+ *
+ * Ownership is tracked with this WeakSet (not obj.userData) on purpose:
+ * Three.js's clone() deep-copies userData onto every new clone, so a
+ * userData flag set on your own player's mesh would get copied onto
+ * every remote player's mesh too, even though they still shared the
+ * same underlying material object -- applyAvatarColors would then think
+ * that shared material was "already private" and mutate it directly,
+ * recoloring every player who happened to share it. A WeakSet keyed on
+ * the actual mesh instance doesn't get carried over by cloning, so each
+ * newly-built mesh (local or remote) always starts unmarked.
+ */
+const meshesWithOwnMaterial = new WeakSet();
+
+function applyAvatarColors(root, colors) {
+    if (!colors) return;
+    root.traverse((obj) => {
+        if (!obj.isMesh) return;
+        for (const [part, meshNames] of Object.entries(AVATAR_PART_MESH_NAMES)) {
+            if (!meshNames.includes(obj.name) || !colors[part]) continue;
+            if (!meshesWithOwnMaterial.has(obj)) {
+                obj.material = obj.material.clone();
+                meshesWithOwnMaterial.add(obj);
+            }
+            obj.material.color.set(colors[part]);
+        }
+    });
+}
+
+//---Hats---\\\
+// Hats use `model` and `texture` together (unlike t-shirts, which just
+// paint a texture onto the existing torso mesh) -- the item's own GLTF
+// is loaded, textured, and attached near the head. Mirrors the same
+// equip logic used in the avatar builder's preview (script.js).
+
+// Fetched once and shared by every player (local + remote) instead of
+// re-fetching items.json per player.
+const itemsCatalogPromise = fetch('/api/items.json')
+    .then(r => (r.ok ? r.json() : []))
+    .catch(() => []);
+
+const equippedHatByRoot = new WeakMap(); // root -> currently-attached hat Group, so re-equipping swaps cleanly instead of stacking
+
+/**
+ * Finds a bone whose name looks like "head" inside root's skeleton(s), if
+ * any. Attaching the hat to this bone (rather than the head mesh itself)
+ * is what makes it track head movement during animation -- a SkinnedMesh
+ * node's own transform typically stays static; the actual motion comes
+ * from the bones deforming its vertices.
+ */
+function findHeadBone(root) {
+    let headBone = null;
+    root.traverse((obj) => {
+        if (headBone || !obj.isSkinnedMesh || !obj.skeleton) return;
+        headBone = obj.skeleton.bones.find(b => /head/i.test(b.name)) || null;
+    });
+    return headBone;
+}
+
+// Small upward offset from the head bone's origin so the hat sits on top
+// of the head rather than at its center -- there's no bone geometry to
+// measure, so this is a tuned guess; adjust if it looks off with real hat
+// models (it also depends on each hat model's own origin/pivot).
+const HAT_BONE_Y_OFFSET = 0.18;
+
+async function equipHat(root, avatar) {
+    if (!avatar || !avatar.accessories) return;
+    const items = await itemsCatalogPromise;
+    const equippedIds = new Set(avatar.accessories.ids);
+    const hatItem = items.find(item => item.type === "Hat" && equippedIds.has(item.Id));
+
+    // Remove whatever hat this root was previously wearing before adding
+    // the new one -- keeps re-equip/unequip clean instead of stacking.
+    const previousHat = equippedHatByRoot.get(root);
+    if (previousHat) {
+        previousHat.parent?.remove(previousHat);
+        equippedHatByRoot.delete(root);
+    }
+    if (!hatItem || !hatItem.model) return;
+
+    let hat;
+    try {
+        const hatGltf = await loader.loadAsync(hatItem.model);
+        hat = hatGltf.scene;
+    } catch (err) {
+        console.warn(`[avatar] could not load hat model for item ${hatItem.Id}`, err);
+        return;
+    }
+
+    if (hatItem.texture) {
+        try {
+            const hatTexture = await sharedTextureLoader.loadAsync(hatItem.texture);
+            hatTexture.colorSpace = THREE.SRGBColorSpace;
+            hat.traverse((obj) => {
+                if (!obj.isMesh) return;
+                obj.material = obj.material.clone();
+                obj.material.map = hatTexture;
+                obj.material.needsUpdate = true;
+            });
+        } catch (err) {
+            console.warn(`[avatar] could not load hat texture for item ${hatItem.Id}`, err);
+        }
+    }
+
+    const hatGroup = new THREE.Group();
+    hatGroup.add(hat);
+
+    const headBone = findHeadBone(root);
+    if (headBone) {
+        // Bone-local space: no geometry to measure, just a tuned offset.
+        hatGroup.position.set(0, HAT_BONE_Y_OFFSET, 0);
+        headBone.add(hatGroup);
+    } else {
+        // Fallback: no skeleton/head bone found, so the hat won't track
+        // head-bob animation, but it'll still sit in the right place for
+        // an idle pose. Uses the head mesh's own local bounding box so it
+        // doesn't matter how root itself is rotated/positioned.
+        const headMesh = root.getObjectByName("Head_1");
+        if (headMesh) {
+            headMesh.geometry.computeBoundingBox();
+            const box = headMesh.geometry.boundingBox;
+            hatGroup.position.set(
+                (box.min.x + box.max.x) / 2,
+                box.max.y,
+                (box.min.z + box.max.z) / 2
+            );
+            headMesh.add(hatGroup);
+        } else {
+            root.add(hatGroup); // last resort, sits at the model's origin
+        }
+    }
+
+    equippedHatByRoot.set(root, hatGroup);
+}
+
+//---Shirts---\\\
+// T-shirts ignore `model` entirely (unlike hats, which use model+texture
+// together) -- the item's texture is painted directly onto the model's
+// existing "T-shirt" overlay mesh. Reuses meshesWithOwnMaterial (the same
+// WeakSet applyAvatarColors() uses) so this mesh only gets cloned to a
+// private material once per root, for the same reason described above:
+// SkeletonUtils.clone() shares material references, so without this every
+// remote player would show whatever shirt texture was set last.
+async function equipShirt(root, avatar) {
+    const shirtMesh = root.getObjectByName("T-shirt");
+    if (!shirtMesh) return;
+
+    if (!avatar || !avatar.accessories) {
+        shirtMesh.visible = false;
+        return;
+    }
+
+    const items = await itemsCatalogPromise;
+    const equippedIds = new Set(avatar.accessories.ids);
+    const shirtItem = items.find(item => item.type === "T-shirt" && equippedIds.has(item.Id));
+
+    if (!shirtItem) {
+        shirtMesh.visible = false;
+        return;
+    }
+
+    if (!meshesWithOwnMaterial.has(shirtMesh)) {
+        shirtMesh.material = shirtMesh.material.clone();
+        meshesWithOwnMaterial.add(shirtMesh);
+    }
+
+    if (shirtItem.texture) {
+        try {
+            const tex = await sharedTextureLoader.loadAsync(shirtItem.texture);
+            tex.colorSpace = THREE.SRGBColorSpace;
+            tex.flipY = false;
+            shirtMesh.material.map = tex;
+            shirtMesh.material.needsUpdate = true;
+        } catch (err) {
+            console.warn(`[avatar] could not load shirt texture for item ${shirtItem.Id}`, err);
+            const tex = await sharedTextureLoader.loadAsync("textures/Plastic.png");
+            tex.colorSpace = THREE.SRGBColorSpace;
+            tex.flipY = false;
+            shirtMesh.material.map = tex;
+            shirtMesh.material.needsUpdate = true;
+            shirtMesh.visible = false;
+        }
+    }
+
+    shirtMesh.visible = true;
+}
 
 //---Sounds---\\\
 
@@ -277,7 +939,7 @@ const audioLoader = new THREE.AudioLoader();
 audioLoader.load('sound/action_jump.wav', function(buffer) {
     globalSound.setBuffer(buffer);
     globalSound.setLoop(false);
-    globalSound.setVolume(0.5);
+    globalSound.setVolume(2);
 });
 
 if (gltf.animations && gltf.animations.length > 0) {
@@ -292,12 +954,16 @@ if (gltf.animations && gltf.animations.length > 0) {
      });
 
     gltf.animations.forEach((clip) => {
-        animationsMap[clip.name.toLowerCase()] = mixer.clipAction(clip);
+        const action = mixer.clipAction(clip);
+        action.enabled = true;
+        action.setEffectiveWeight(0);
+        action.play();
+        animationsMap[clip.name.toLowerCase()] = action;
     });
 
     if (animationsMap['idle']) {
         currentAction = animationsMap['idle'];
-        currentAction.play();
+        currentAction.setEffectiveWeight(1);
     }
 }
 
@@ -307,77 +973,420 @@ gltf.scene.rotation.y = Math.PI;
 gltf.scene.position.z = 0.9;
 scene.add( gltf.scene );
 
-//---HitBoxs---\\\
+fetch('/api/me/avatar', { credentials: 'include' })
+    .then(r => r.json())
+    .then(avatar => {
+        applyAvatarColors(gltf.scene, avatar.colors);
+        equipHat(gltf.scene, avatar);
+        equipShirt(gltf.scene, avatar);
+    })
+    .catch(() => console.warn('[avatar] could not load your avatar colors'));
+
+let myUserId = null;
+fetch('/api/me', { credentials: 'include' })
+    .then(r => r.json())
+    .then(me => { myUserId = me.id; })
+    .catch(() => console.warn('[multiplayer] could not fetch /api/me -- are you logged in?'));
+
+const multiplayerSocket = new WebSocket(`ws://localhost:8001/?game_id=${encodeURIComponent(GAME_ID)}`);
+const otherPlayers = {}; // user_id (string) -> remote player record, see buildRemotePlayer()
+
+multiplayerSocket.addEventListener('open', () => console.log('[multiplayer] connected'));
+multiplayerSocket.addEventListener('close', (e) => console.log('[multiplayer] disconnected', e.code, e.reason));
+multiplayerSocket.addEventListener('error', (err) => console.error('[multiplayer] socket error', err));
+multiplayerSocket.addEventListener('message', (event) => {
+    const msg = JSON.parse(event.data);
+    if (msg.type === 'state') updateOtherPlayers(msg.players);
+    else if (msg.type === 'chat') appendChatMessage(msg.username, msg.text);
+});
+
+function buildRemotePlayer(id) {
+    // A real clone of your character, not a placeholder -- SkeletonUtils.clone
+    // is required (instead of gltf.scene.clone()) because this model is
+    // skinned/rigged; a plain clone shares bones and breaks animation.
+    const root = SkeletonUtils.clone(gltf.scene);
+    root.traverse((obj) => {
+        if (obj.isMesh) {
+            obj.castShadow = true;
+            obj.receiveShadow = true;
+        }
+    });
+    scene.add(root);
+
+    // Public, read-only endpoint -- no auth needed to see another
+    // player's avatar colors, same as viewing their profile.
+    fetch(`/api/${id}/avatar`, { credentials: 'include' })
+        .then(r => r.json())
+        .then(avatar => {
+            applyAvatarColors(root, avatar.colors);
+            equipHat(root, avatar);
+            equipShirt(root, avatar);
+        })
+        .catch(() => console.warn(`[avatar] could not load avatar colors for player ${id}`));
+
+    const mixer = new THREE.AnimationMixer(root);
+    const animMap = {};
+    gltf.animations.forEach((clip) => {
+        const action = mixer.clipAction(clip);
+        // Same "always playing, weight-only crossfade" pattern as the
+        // local player's animationsMap setup above -- see the comment
+        // there for why this matters.
+        action.enabled = true;
+        action.setEffectiveWeight(0);
+        action.play();
+        animMap[clip.name.toLowerCase()] = action;
+    });
+
+    let currentAction = animMap['idle'] || null;
+    if (currentAction) currentAction.setEffectiveWeight(1);
+
+    const player = {
+        root,
+        mixer,
+        animMap,
+        currentAction,
+        targetPos: [root.position.x, root.position.y, root.position.z],
+        targetRot: [root.quaternion.x, root.quaternion.y, root.quaternion.z, root.quaternion.w],
+    };
+
+    // Mirror the local player's mixer 'finished' handling: without this,
+    // a one-shot gesture (Point) played on a remote player has nothing to
+    // pull it back to idle once it finishes, so it stays frozen on its
+    // last frame for everyone else until a different anim message happens
+    // to arrive.
+    mixer.addEventListener('finished', (e) => {
+        if (e.action === animMap['point']) {
+            setRemoteAnimation(player, 'Idle');
+        }
+    });
+
+    return player;
+}
+
+function setRemoteAnimation(player, animName) {
+    const next = player.animMap[animName.toLowerCase()];
+    if (!next || player.currentAction === next) return;
+
+    next.paused = false; // in case a previous one-shot left it paused
+
+    if (animName.toLowerCase() === "point") {
+        next.reset(); // one-shot gesture: always restart from frame 0
+        next.setLoop(THREE.LoopOnce, 1);
+        next.clampWhenFinished = true;
+    } else {
+        next.setLoop(THREE.LoopRepeat);
+    }
+
+    // The incoming action's weight must be explicitly set to 1 *before*
+    // crossFadeTo -- leaving it at 0 and trusting crossFadeTo's internal
+    // fadeIn to ramp it up does NOT work (verified against real
+    // Three.js: the weight silently stays at 0 the whole time). This is
+    // the same fix as fadeToAnimation() below, for the same reason.
+    next.enabled = true;
+    next.setEffectiveTimeScale(1);
+    next.setEffectiveWeight(1);
+
+    if (player.currentAction) {
+        player.currentAction.crossFadeTo(next, 0.2, true);
+    } else {
+        next.fadeIn(0.2);
+    }
+    player.currentAction = next;
+}
+
+function updateOtherPlayers(players) {
+    const seenIds = new Set();
+
+    for (const id in players) {
+        if (myUserId !== null && id === String(myUserId)) continue; // skip yourself
+        seenIds.add(id);
+
+        const data = players[id];
+        if (!otherPlayers[id]) {
+            otherPlayers[id] = buildRemotePlayer(id);
+        }
+
+        const p = otherPlayers[id];
+        p.targetPos = data.pos;
+        p.targetRot = data.rot;
+        if (data.anim) setRemoteAnimation(p, data.anim);
+    }
+
+    // Remove players who disconnected
+    for (const id in otherPlayers) {
+        if (!seenIds.has(id)) {
+            scene.remove(otherPlayers[id].root);
+            delete otherPlayers[id];
+        }
+    }
+}
+
+const REMOTE_LERP_SPEED = 10; // higher = snappier, lower = smoother but laggier
+
+function interpolateOtherPlayers(deltaSeconds) {
+    const t = Math.min(1, REMOTE_LERP_SPEED * deltaSeconds);
+    for (const id in otherPlayers) {
+        const p = otherPlayers[id];
+        p.root.position.lerp(
+            new THREE.Vector3(p.targetPos[0], p.targetPos[1], p.targetPos[2]),
+            t
+        );
+        p.root.quaternion.slerp(
+            new THREE.Quaternion(p.targetRot[0], p.targetRot[1], p.targetRot[2], p.targetRot[3]),
+            t
+        );
+        if (p.mixer) p.mixer.update(deltaSeconds);
+    }
+}
+
+const MULTIPLAYER_SEND_RATE = 1 / 20; // matches TICK_RATE in multiplayer.py
+let lastMultiplayerSend = 0;
+
+function sendMyPosition(elapsedSeconds) {
+    if (elapsedSeconds - lastMultiplayerSend < MULTIPLAYER_SEND_RATE) return;
+    lastMultiplayerSend = elapsedSeconds;
+
+    if (multiplayerSocket.readyState !== WebSocket.OPEN) return;
+
+    multiplayerSocket.send(JSON.stringify({
+        type: 'move',
+        pos: [gltf.scene.position.x, gltf.scene.position.y, gltf.scene.position.z],
+        rot: [gltf.scene.quaternion.x, gltf.scene.quaternion.y, gltf.scene.quaternion.z, gltf.scene.quaternion.w],
+        anim: currentState || 'idle',
+    }));
+}
+
+//=========HitBoxs=========\\\
 const hitboxHeight = 3;
 const hitboxGeo = new THREE.BoxGeometry(1.3, hitboxHeight, 0.6);
 
-let hitboxMat = new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true, visible: true });
+let hitboxMat = new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true, visible: false });
 const playerHitboxMesh = new THREE.Mesh(hitboxGeo, hitboxMat);
 hitboxGeo.translate(0, hitboxHeight / 2, 0); 
 scene.add(playerHitboxMesh);
 
-const playerBox = new THREE.Box3();
+const playerLocalOBB = new OBB(
+    new THREE.Vector3(0, hitboxHeight / 2, 0),
+    new THREE.Vector3(0.65, hitboxHeight / 2, 0.3)
+);
+const playerOBB = playerLocalOBB.clone();
+const playerBoundingRadius = Math.sqrt(0.65 * 0.65 + (hitboxHeight / 2) * (hitboxHeight / 2) + 0.3 * 0.3);
+
+function syncPlayerHitbox() {
+    playerHitboxMesh.position.copy(gltf.scene.position);
+    playerHitboxMesh.quaternion.copy(gltf.scene.quaternion);
+    playerHitboxMesh.updateMatrixWorld(true);
+
+    playerOBB.copy(playerLocalOBB);
+    playerOBB.applyMatrix4(playerHitboxMesh.matrixWorld);
+}
+
+function GraficsUpdate() {
+   if (GraficsSlider.value === "1") {
+       sun.shadow.mapSize.set(0, 0);
+       updateFrustum(0);
+   } else if (GraficsSlider.value === "2") {
+       sun.shadow.mapSize.set(2048, 2048);
+       updateFrustum(30);
+   } else if (GraficsSlider.value === "3") {
+       sun.shadow.mapSize.set(2048, 2048);
+       updateFrustum(35);
+   } else if (GraficsSlider.value === "4") {
+       sun.shadow.mapSize.set(2048, 2048);
+       updateFrustum(40);
+   } else if (GraficsSlider.value === "5") {
+       sun.shadow.mapSize.set(2048, 2048);
+       updateFrustum(65);
+   }
+
+   if (sun.shadow.map) {
+       sun.shadow.map.dispose();
+       sun.shadow.map = null;
+   }
+   sun.shadow.camera.updateProjectionMatrix();
+   renderer.shadowMap.needsUpdate = true;
+}
+
+function updateFrustum(size) {
+    sun.shadow.camera.left = -size;
+    sun.shadow.camera.right = size;
+    sun.shadow.camera.top = size;
+    sun.shadow.camera.bottom = -size;
+}
+
+GraficsSlider.addEventListener('input', function() {
+    GraficsUpdate()
+});
+const partGravity = -0.03;
+const partTerminalVelocity = 3;
+const _partPushVec = new THREE.Vector3();
+const PART_PUSH_SHARE = 0.0;
+const PART_PUSH_SPEED = 0.04;
+const PART_FRICTION = 0.24;
 
 function checkPartCollisions() {
-    playerHitboxMesh.position.copy(gltf.scene.position);
-    playerHitboxMesh.rotation.copy(gltf.scene.rotation);
-    playerBox.setFromObject(playerHitboxMesh); 
+    syncPlayerHitbox();
 
     isGrounded = false;
+    isClimbing = false;
+
+    const px = playerOBB.center.x, py = playerOBB.center.y, pz = playerOBB.center.z;
 
     for (let i = 0; i < activeParts.length; i++) {
         const part = activeParts[i];
-        if (!part.boundingBox) continue;
 
-        if (playerBox.intersectsBox(part.boundingBox)) {
-            // Calculate current axis penetrations
+        const dx = part.x - px;
+        const dy = part.y - py;
+        const dz = part.z - pz;
+        const reach = part.boundingRadius + playerBoundingRadius;
+        if (dx * dx + dy * dy + dz * dz > reach * reach) continue;
 
-            if (part.killbrick) {
-                Health = 0;
-                continue;
-            }
-            
-            const overlapX = Math.min(playerBox.max.x, part.boundingBox.max.x) - Math.max(playerBox.min.x, part.boundingBox.min.x);
-            const overlapY = Math.min(playerBox.max.y, part.boundingBox.max.y) - Math.max(playerBox.min.y, part.boundingBox.min.y);
-            const overlapZ = Math.min(playerBox.max.z, part.boundingBox.max.z) - Math.max(playerBox.min.z, part.boundingBox.min.z);
+        part.updateHitbox();
 
-            if (overlapY < overlapX && overlapY < overlapZ) {
-                const distFromTop = part.boundingBox.max.y - playerBox.min.y;
-                const distFromBottom = playerBox.max.y - part.boundingBox.min.y;
+        hit = resolveOBBOverlap(playerOBB, part.obb);
+        if (!hit) continue;
 
-                if (distFromTop <= distFromBottom) {
-                    gltf.scene.position.y = part.boundingBox.max.y + 0.001;
-                    isGrounded = true;
-                } else {
-                    // Hit ceiling from below
-                    gltf.scene.position.y = part.boundingBox.min.y - hitboxHeight - 0.001;
-                }
-                velocityY = 0;
+        if (part.killbrick) {
+            Health = 0;
+            continue;
+        }
 
-                playerHitboxMesh.position.copy(gltf.scene.position);
-                playerBox.setFromObject(playerHitboxMesh);
-            } 
-            else if (overlapX < overlapZ) {
-                const dirX = gltf.scene.position.x > part.mesh.position.x ? 1 : -1;
-                gltf.scene.position.x += overlapX * dirX;
-                
-                playerHitboxMesh.position.copy(gltf.scene.position);
-                playerBox.setFromObject(playerHitboxMesh);
-            } 
-            else {
-                const dirZ = gltf.scene.position.z > part.mesh.position.z ? 1 : -1;
-                gltf.scene.position.z += overlapZ * dirZ;
-                
-                // Recalculate box boundary immediately
-                playerHitboxMesh.position.copy(gltf.scene.position);
-                playerBox.setFromObject(playerHitboxMesh);
+        if (part.isSpawnLocation) {
+            SetSpawn(part.x, part.y + part.sy, part.z);
+        }
+
+        if (part.Siting && sitCooldown <= 0) {
+            velocityY = 0
+            Siting = true
+            fadeToAnimation("Sit")
+            gltf.scene.position.set(part.x, part.y + SEAT_HEIGHT_OFFSET, part.z)
+            gltf.scene.rotation.y = part.rx
+            continue
+        }
+
+        isVertical = Math.abs(hit.axis.y) > 0.5;
+
+        pushOverlap = hit.overlap;
+
+        charForward.set(0, 0, -1).applyQuaternion(gltf.scene.quaternion).normalize();
+        isFacingWall = charForward.dot(hit.axis) < -0.97;
+        
+        if (part.IsClimbable && !isVertical && isFacingWall ) {
+            isClimbing = true;
+            climbNormal.copy(hit.axis);
+            climbLaunchVelocity.set(0, 0, 0);
+            pushOverlap = Math.max(0, hit.overlap - CLIMB_STICK);
+        }
+
+        if (part.CanCollide) continue;
+
+        if (!part.Anchored && !isVertical) {
+            const pushToBlock = pushOverlap * PART_PUSH_SHARE;
+            const pushToPlayer = pushOverlap - pushToBlock;
+
+            _partPushVec.copy(hit.axis).multiplyScalar(-pushToBlock);
+            part.x += _partPushVec.x;
+            part.z += _partPushVec.z;
+            part.mesh.position.set(part.x, part.y, part.z);
+            part.updateHitbox();
+
+            part.velocity.x += -hit.axis.x * PART_PUSH_SPEED;
+            part.velocity.z += -hit.axis.z * PART_PUSH_SPEED;
+
+            _pushVec.copy(hit.axis).multiplyScalar(pushToPlayer);
+            gltf.scene.position.add(_pushVec);
+            syncPlayerHitbox();
+            continue;
+        }
+
+        _pushVec.copy(hit.axis).multiplyScalar(pushOverlap);
+        gltf.scene.position.add(_pushVec);
+        syncPlayerHitbox();
+
+        if (isVertical) {
+            velocityY = 0;
+            if (hit.axis.y > 0) {
+                isGrounded = true;
             }
         }
     }
 }
 
+function stepDynamicParts(dt) {
+    for (let i = 0; i < dynamicParts.length; i++) {
+        const part = dynamicParts[i];
+        const wasGrounded = !!part._grounded;
 
-//---Mouse and Keyborad---\\\
+        part.velocity.y += partGravity * dt;
+        part.velocity.y = Math.max(-partTerminalVelocity, Math.min(partTerminalVelocity, part.velocity.y));
+
+        if (wasGrounded) {
+            const friction = Math.max(0, 1 - PART_FRICTION * dt);
+            part.velocity.x *= friction;
+            part.velocity.z *= friction;
+            if (Math.abs(part.velocity.x) < 0.001) part.velocity.x = 0;
+            if (Math.abs(part.velocity.z) < 0.001) part.velocity.z = 0;
+        }
+
+        part.x += part.velocity.x * dt;
+        part.y += part.velocity.y * dt;
+        part.z += part.velocity.z * dt;
+
+        part.mesh.position.set(part.x, part.y, part.z);
+        part.updateHitbox();
+
+        part._grounded = false;
+
+        for (let j = 0; j < activeParts.length; j++) {
+            const other = activeParts[j];
+            if (other === part) continue;
+
+            const dx = other.x - part.x, dy = other.y - part.y, dz = other.z - part.z;
+            const reach = other.boundingRadius + part.boundingRadius;
+            if (dx * dx + dy * dy + dz * dz > reach * reach) continue;
+
+            other.updateHitbox();
+            const hit = resolveOBBOverlap(part.obb, other.obb);
+            if (!hit || other.CanCollide) continue;
+
+            _partPushVec.copy(hit.axis).multiplyScalar(hit.overlap);
+            part.x += _partPushVec.x;
+            part.y += _partPushVec.y;
+            part.z += _partPushVec.z;
+            part.mesh.position.set(part.x, part.y, part.z);
+            part.updateHitbox();
+
+            if (Math.abs(hit.axis.y) > 0.5) {
+                part.velocity.y = 0;
+                if (hit.axis.y > 0) part._grounded = true;
+            } else {
+                part.velocity.x = 0;
+                part.velocity.z = 0;
+            }
+        }
+    }
+}
+
+function CheckHealth() {
+    if (Health <= 0) {
+       WalkSpeed = 0;
+       setTimeout(() => {
+           gltf.scene.position.y = spawn.y;
+           gltf.scene.position.x = spawn.x;
+           gltf.scene.position.z = spawn.z;
+           velocityY = 0
+           gltf.scene.rotation.y = 3.14;
+           gltf.scene.rotation.x = 0;
+           gltf.scene.rotation.z = 0;
+           ItemHeld = false
+           Health = 100;
+           WalkSpeed = -0.18;
+       }, 200);
+    }
+}
+
+
+//=========Mouse and Keyborad=========\\\
 window.addEventListener('mousedown', (event) => {
     if (event.button === 2 || event.button === 0) { 
         isDragging = true;
@@ -406,7 +1415,7 @@ window.addEventListener('mouseup', (event) => {
 
 window.addEventListener('wheel', (event) => {
     distance += event.deltaY * 0.05;
-    distance = Math.max(3, Math.min(260, distance));
+    distance = Math.max(FIRST_PERSON_DISTANCE, Math.min(260, distance));
 });
 
 window.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -417,23 +1426,26 @@ window.addEventListener('keyup', (e) => { if (e.code in keys) keys[e.code] = fal
 
 document.addEventListener("keydown", (event) => {
     if (event.key === 'p') {
+        // currentState (not just the local action) drives what
+        // sendMyPosition() broadcasts to other players -- without this,
+        // pointing was purely a local visual and never reached anyone
+        // else. The mixer's 'finished' listener below resets currentState
+        // back to "" once the one-shot animation completes.
+        currentState = "point";
         fadeToAnimation('Point');
-    }
-    if (event.key === 'y') {
-        TShirt = new THREE.TextureLoader().load("faces/default.png");
-        TShirt.flipY = false;
-        gltf.scene.traverse((obj) => {
-            if (obj.isMesh && obj.name === "T-shirt") {
-                obj.material.map = TShirt;
-                obj.material.needsUpdate = true;
-            }
-        });
     }
 });
 
 document.addEventListener('keydown', (event) => {
   if (event.code === "Space") {
-    if (velocityY === 0) {
+    if (Siting === true) sitCooldown = SIT_COOLDOWN_TIME;
+    Siting = false
+    if (isClimbing) {
+      isClimbing = false;
+      velocityY = JumpPower;
+      climbLaunchVelocity.copy(climbNormal).multiplyScalar(CLIMB_LAUNCH_SPEED);
+      globalSound.play();
+    } else if (velocityY === 0) {
       velocityY = JumpPower; 
       globalSound.play();
     }
@@ -458,6 +1470,20 @@ document.addEventListener('keydown', (event) => {
 });
 
 document.addEventListener('keydown', (event) => {
+  if (event.code === "Escape") {
+     centerMenu.classList.remove('hidden');
+     Paused = true;
+  }
+});
+
+document.addEventListener('keydown', (event) => {
+  if (event.code === "Period") {
+     centerMenu.classList.remove('hidden');
+     Paused = true;
+  }
+});
+
+document.addEventListener('keydown', (event) => {
   if (event.shiftKey) {
      if (Siftlock === true) {
          Siftlock = false
@@ -468,7 +1494,14 @@ document.addEventListener('keydown', (event) => {
   }
 });
 
-//---Animation---\\\
+function Respawn() {
+   Health = 0;
+}
+
+window.Respawn = Respawn
+window.SetSpawn = SetSpawn
+
+//===Animation===\\\
 
 function fadeToAnimation(nextAnimationName) {
     const nextAction = animationsMap[nextAnimationName.toLowerCase()];
@@ -492,54 +1525,76 @@ function fadeToAnimation(nextAnimationName) {
     currentAction = nextAction;
 }
 
+window.fadeToAnimation = fadeToAnimation
+
+window.addEventListener('resize', () => {
+   camera.aspect = window.innerWidth / window.innerHeight;
+   camera.updateProjectionMatrix();
+   renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
 window.gltf = gltf;
 window.ItemHeld = ItemHeld;
 window.fadeToAnimation = fadeToAnimation
 
-const clock = new THREE.Clock();
+clock = new THREE.Clock();
 const moveDirection = new THREE.Vector3();
 
 camera.position.set(0, 3.5, 12);
 
 console.log("Loaded clips:", gltf.animations.map(a => a.name));
 
+window.isClimbing = isClimbing
+
 function animate() {
     requestAnimationFrame(animate);
-    const ratio = Health / MaxHealth;
-    const percentage = ratio * 100;
-    // healthBar.style.width = percentage + 1 + "%";
 
-    const red = Math.floor((1.5 - ratio) * 255);
-    const green = Math.floor(ratio * 255);
-    const blue = 25;
+    delta = clock.getDelta();
+    dt = delta * 60;
 
-    // healthBar.style.backgroundColor = `rgb(${red}, ${green}, ${blue})`;
-
-    if (playerHitboxMesh.position.y <= -100) {
-       Health = 0;
+    if (playerHitboxMesh.position.y <= -90) {
+       Health = 0
     }
 
-    if (Health <= 0) {
-       fadeToAnimation("Idle")
-       WalkSpeed = 0;
-       setTimeout(() => {
-           gltf.scene.position.y = SpawnLocation.x;
-           gltf.scene.position.x = SpawnLocation.y;
-           gltf.scene.position.z = SpawnLocation.z;
-           gltf.scene.rotation.y = 3.14;
-           velocityY = 0;
-           gltf.scene.rotation.x = 0;
-           gltf.scene.rotation.z = 0;
-           ItemHeld = false
-           Health = 100;
-           WalkSpeed = -0.18;
-       }, 750);
+    if (Health >= MaxHealth) {
+       Health = MaxHealth
     }
+    ratio = Health / MaxHealth
+    percentage = ratio * 100
+    fill.style.width = percentage + "%";
+
+    setTimeout(() => {
+        loadingScreen.classList.add('hidden');
+    }, 1350);
+
+    r = Math.floor((1.5 - ratio) * 255); -3
+    g = Math.floor(ratio * 255); -3
+    b = 25;
+
+    fill.style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
+
+    CheckHealth()
 
     if (gltf && gltf.scene) {
-        // 1. Calculate & Apply Vertical Movement (Gravity)
-        velocityY += gravity;
-        gltf.scene.position.y += velocityY;
+        if (sitCooldown > 0) sitCooldown -= dt;
+
+        if (Siting === true) {
+            velocityY = 0;
+        } else if (isClimbing === false) {
+            velocityY += gravity * dt;
+        } else if (isClimbing === true && Paused === false)  {
+            velocityY = 0;
+            if (keys.KeyW) {
+                gltf.scene.position.y += dt * climbSpeed;
+            } else if (keys.KeyS) {
+                gltf.scene.position.y -= climbSpeed * dt;
+            }
+        }
+
+        velocityY = Math.max(-terminalVelocity, Math.min(terminalVelocity, velocityY));
+
+        gltf.scene.position.y += velocityY * dt;
+        checkPartCollisions();
 
         // Ground floor constraint fallback
         //if (gltf.scene.position.y <= groundY) {
@@ -547,77 +1602,135 @@ function animate() {
             //velocityY = 0;
         //}
 
-        // 2. Calculate & Apply Horizontal Keyboard Movement
         moveDirection.set(0, 0, 0);
 
-        const forwardX = Math.sin(theta);
-        const forwardZ = Math.cos(theta);
-        const rightX = Math.cos(theta);
-        const rightZ = -Math.sin(theta);
+        forwardX = Math.sin(theta);
+        forwardZ = Math.cos(theta);
+        rightX = Math.cos(theta);
+        rightZ = -Math.sin(theta);
 
-        activeParts.forEach(part => part.updateHitbox());
+        if (keys.KeyW && Paused === false && Siting === false) { moveDirection.x += forwardX; moveDirection.z += forwardZ; }
+        if (keys.KeyS && Paused === false && Siting === false) { moveDirection.x -= forwardX; moveDirection.z -= forwardZ; }
+        if (keys.KeyA && Paused === false && Siting === false) { moveDirection.x += rightX;   moveDirection.z += rightZ; }
+        if (keys.KeyD && Paused === false && Siting === false) { moveDirection.x -= rightX;   moveDirection.z -= rightZ; }
 
-        if (keys.KeyW) { moveDirection.x += forwardX; moveDirection.z += forwardZ; }
-        if (keys.KeyS) { moveDirection.x -= forwardX; moveDirection.z -= forwardZ; }
-        if (keys.KeyA) { moveDirection.x += rightX;   moveDirection.z += rightZ; }
-        if (keys.KeyD) { moveDirection.x -= rightX;   moveDirection.z -= rightZ; }
-
-        if (Siftlock) {
-            const lockQuaternion = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), theta);
+        if (Siftlock && Siting === false) {
+            lockQuaternion.setFromAxisAngle(UP_AXIS, theta);
             gltf.scene.quaternion.slerp(lockQuaternion, 0.15);
+        }
+
+        if (moveDirection.lengthSq() > 0.0001 && !Siftlock && !isClimbing) {
+             targetRotationY = Math.atan2(moveDirection.x, moveDirection.z);
+             targetQuaternion.setFromAxisAngle(UP_AXIS, targetRotationY);
+             gltf.scene.quaternion.slerp(targetQuaternion, 0.15);
         }
 
         if (moveDirection.lengthSq() > 0.0001) {
             moveDirection.normalize();
-
-            if (!Siftlock) {
-                const targetRotationY = Math.atan2(moveDirection.x, moveDirection.z);
-                const targetQuaternion = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), targetRotationY);
-                gltf.scene.quaternion.slerp(targetQuaternion, 0.15);
+            if (!isClimbing) {
+                gltf.scene.position.addScaledVector(moveDirection, WalkSpeed + 0.0001);
             }
-            gltf.scene.position.addScaledVector(moveDirection, WalkSpeed + 0.0001);
         }
 
-        if (!isGrounded) {
-            if (currentState !== "jump") {
+        if (climbLaunchVelocity.lengthSq() > 0.0001) {
+            gltf.scene.position.addScaledVector(climbLaunchVelocity, dt);
+            const launchDamping = Math.max(0, 1 - CLIMB_LAUNCH_DAMPING * dt);
+            climbLaunchVelocity.multiplyScalar(launchDamping);
+            if (climbLaunchVelocity.lengthSq() < 0.0004) climbLaunchVelocity.set(1, 0, 0);
+        }
+
+
+        if (Siting) {
+            if (currentState !== "sit") {
+                fadeToAnimation('Sit');
+                currentState = "sit";
+            }
+        } else if (!isGrounded) {
+            if (currentState !== "jump" && velocityY >= 0) {
                 fadeToAnimation('Jump');
                 currentState = "jump";
+            } else if (velocityY <= -0) {
+                fadeToAnimation('Fall');
+                currentState = "fall";
             }
         } else if (moveDirection.lengthSq() > 0.0001) {
-            const walkAnim = ItemHeld ? 'itemheld-walk' : "walk";
+            walkAnim = ItemHeld ? 'itemheld-walk' : "walk";
             if (currentState !== walkAnim) {
-                fadeToAnimation(ItemHeld ? 'IdleHeld-Walk' : 'Walk');
+                fadeToAnimation(ItemHeld ? 'ItemHeld-Walk' : 'Walk');
                 currentState = walkAnim;
             }
         } else {
-            const idleAnim = ItemHeld ? 'itemheld-idle' : "idle";
+            idleAnim = ItemHeld ? 'itemheld-idle' : "idle";
             if (currentState !== idleAnim) {
                 fadeToAnimation(ItemHeld ? 'ItemHeld-Idle' : 'Idle');
                 currentState = idleAnim;
             }
         }
 
-        // 3. Resolve ALL Collisions (Horizontal and Vertical) BEFORE the camera updates
-        checkPartCollisions();
+        if (isClimbing) {
+            if (currentState !== "climb") {
+                fadeToAnimation("Climb");
+                currentState = "climb";
+            }
+        }
 
-        // 4. Update Camera View Matrix (now using the clean, non-clipped position)
-        const target = playerHitboxMesh.position;
-        const heightOffset = 2.5;
-        camera.position.x = target.x + distance * Math.sin(theta) * Math.cos(phi);
-        camera.position.z = target.z + distance * Math.cos(theta) * Math.cos(phi);
-        camera.position.y = target.y + heightOffset + distance * Math.sin(phi);
+        checkPartCollisions();
+        stepDynamicParts(dt);
+
+        target = playerHitboxMesh.position;
+
+        cameraPivot.set(target.x, target.y + heightOffset, target.z);
+        cameraDir.set(
+            Math.sin(theta) * Math.cos(phi),
+            Math.sin(phi),
+            Math.cos(theta) * Math.cos(phi)
+        );
+        cameraRaycaster.set(cameraPivot, cameraDir);
+        cameraRaycaster.near = 0;
+        cameraRaycaster.far = distance;
+        const cameraHits = cameraRaycaster.intersectObjects(collidableMeshes, false);
+        const effectiveDistance = cameraHits.length > 0
+            ? Math.max(FIRST_PERSON_DISTANCE, cameraHits[0].distance - CAMERA_COLLISION_BUFFER)
+            : distance;
+
+        camera.position.x = target.x + effectiveDistance * Math.sin(theta) * Math.cos(phi);
+        camera.position.z = target.z + effectiveDistance * Math.cos(theta) * Math.cos(phi);
+
+        const lookOffsetX = forwardX * 12;
+        const lookOffsetZ = forwardZ * 12;
+
+        const shadowCenterX = target.x + lookOffsetX;
+        const shadowCenterZ = target.z + lookOffsetZ;
+
+        sun.position.set(shadowCenterX + 20, target.y + 35, shadowCenterZ + 15);
+        sun.target.position.set(shadowCenterX, target.y, shadowCenterZ);
+       
+        const firstPersonFade = THREE.MathUtils.clamp(
+            (effectiveDistance - FIRST_PERSON_DISTANCE) / (FIRST_PERSON_FADE_START - FIRST_PERSON_DISTANCE),
+            0, 1
+        );
+        for (let i = 0; i < characterMeshes.length; i++) {
+            const meshPart = characterMeshes[i];
+            meshPart.material.opacity = firstPersonFade;
+            meshPart.visible = firstPersonFade > 0.01;
+        }
+
+        if (Siting === false) {
+           camera.position.y = target.y + heightOffset + effectiveDistance * Math.sin(phi);
+        }
+
+        if (Siting === true) {
+           camera.position.y = target.y + heightOffset + effectiveDistance * Math.sin(phi);
+        }
         camera.lookAt(target.x, target.y + heightOffset, target.z);
     }
 
-    // 5. Update animations and render the clean frame
     if (mixer) {
-        mixer.update(clock.getDelta());
+        mixer.update(delta);
     }
-    window.addEventListener('resize', () => {
-       camera.aspect = window.innerWidth / window.innerHeight;
-       camera.updateProjectionMatrix();
-       renderer.setSize(window.innerWidth, window.innerHeight);
-    });
+
+    interpolateOtherPlayers(delta);
+    sendMyPosition(clock.getElapsedTime());
 
     renderer.render(scene, camera);
 }
