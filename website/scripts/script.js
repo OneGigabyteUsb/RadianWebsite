@@ -100,10 +100,10 @@ function router() {
         signupPage();
     }
     else if (path === "/builder") {
-        
+        avatarPage();
     }
     else if (path === "/catalog") {
-        avatarPage();
+        catalogPage();
     }
     else if (path.startsWith("/profile/")) {
         const id = path.split("/profile/")[1];
@@ -307,7 +307,7 @@ async function loadHomeLastPlayed() {
         }
 
         row.innerHTML = games.slice(0, 100).map(game => `
-            <a class="game-tile" href="/games/${game.id}">
+            <a class="game-tile" href="/games/${game.id}" data-link>
                 <div class="game-tile-thumb">
                     <img src="thumbnails/${game.name}.png" alt="${game.name}"
                          onerror="this.parentElement.textContent='${game.name.replace(/'/g, "\\'")}'">
@@ -330,15 +330,21 @@ async function loadHomeLastPlayed() {
  */
 async function gameDetailPage(id) {
 
+    app.innerHTML = `<div class="home-body"><p>Loading...</p></div>`;
+
     let games;
     try {
         games = await loadGames("/api/games.json");
     } catch (err) {
+        console.error("gameDetailPage: failed to load games.json:", err);
+        app.innerHTML = `<div class="home-body"><h1>Games</h1><p>Could not load this game: ${err.message}</p></div>`;
         return;
     }
 
     const game = games.find(g => String(g.id) === String(id));
     if (!game) {
+        console.error(`gameDetailPage: no game with id "${id}" in`, games);
+        app.innerHTML = `<div class="home-body"><h1>Games</h1><p>Couldn't find that game.</p></div>`;
         return;
     }
 
@@ -1169,21 +1175,22 @@ function loginPage() {
 }
 
 
-function signupPage() {
+async function signupPage() {
 
-    const meRes = fetch("/api/me");
+    try {
+        const meRes = await fetch("/api/me", { credentials: "include" });
 
-    if (meRes.ok) {
-        navigate("/home");
-        return;
+        if (meRes.ok) {
+            const me = await meRes.json();
+            navigate(me.is_banned ? "/banned" : "/home");
+            return;
+        }
+    } catch (err) {
+        // Not logged in, or the check failed -- either way, fall through
+        // and show the signup form. This must never block signup itself.
+        console.error("Failed to check for an existing session:", err);
     }
 
-    const me = meRes.json();
-    if (me.is_banned) {
-        navigate("/banned");
-    }
-        
-  
     app.innerHTML = `
         <div class="login-page">
             <div class="login-card">
@@ -1319,6 +1326,5 @@ async function adminPage() {
         successBox.style.display = "block";
     });
 }
-
 
 router();
