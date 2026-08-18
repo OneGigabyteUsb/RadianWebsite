@@ -611,7 +611,7 @@ async function loadMapForCurrentGame() {
         return loadMapFromURL("maps/Demo.json");
     }
     if (GAME_ID === '2') {
-        return loadMapFromURL("maps/a.json");
+        return loadMapFromURL("maps/Demo.json");
     }
 
     try {
