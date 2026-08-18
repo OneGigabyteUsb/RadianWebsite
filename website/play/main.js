@@ -1468,8 +1468,8 @@ function animate() {
 
     delta = clock.getDelta();
     dt = delta * 60;
-	if (dt > 0.1) {
-		dt = 0.1
+	if (dt > 0.7) {
+		dt = 0.7
 	}
 
     if (playerHitboxMesh.position.y <= -90) {
