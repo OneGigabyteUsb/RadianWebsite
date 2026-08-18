@@ -1360,7 +1360,7 @@ document.addEventListener('keydown', (event) => {
     if (isClimbing) {
       isClimbing = false;
       velocityY = JumpPower;
-      climbLaunchVelocity.copy(climbNormal).multiplyScalar(CLIMB_LAUNCH_SPEED);
+      // climbLaunchVelocity.copy(climbNormal).multiplyScalar(CLIMB_LAUNCH_SPEED);
       globalSound.play();
     } else if (velocityY === 0) {
       velocityY = JumpPower; 
