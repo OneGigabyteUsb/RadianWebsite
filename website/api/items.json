@@ -3,8 +3,8 @@
     "Id": 1,
     "name": "test",
     "description": "test item",
-    "model": "/Hats/cola.gltf",
-    "texture": "textures/models/cola.png",
+    "model": "/assets/models/cola.gltf",
+    "texture": "/assets/textures/models/cola.png",
     "type": "Hat",
     "price": 0
   },
@@ -13,7 +13,7 @@
     "name": "Diamond Shirt",
     "description": "real item",
     "model": "",
-    "texture": "t-shirts/DiamondPlate.png",
+    "texture": "/assets/t-shirts/DiamondPlate.png",
     "type": "T-shirt",
     "price": 0
   },
@@ -22,7 +22,7 @@
     "name": "Diamond Plate",
     "description": "real item",
     "model": "",
-    "texture": "t-shirts/Diamond_Shirt.png",
+    "texture": "/assets/t-shirts/Diamond_Shirt.png",
     "type": "T-shirt",
     "price": 0
   },
@@ -30,7 +30,7 @@
     "Id": 4,
     "name": "Sun Glasses",
     "description": "Just some sun glasses better wear them if its sunny outside",
-    "model": "/Hats/SunGlasses.gltf",
+    "model": "/assets/models/SunGlasses.gltf",
     "texture": "",
     "type": "Hat",
     "price": 0
@@ -39,7 +39,7 @@
     "Id": 5,
     "name": "Hair",
     "description": "Now your not bald.",
-    "model": "/Hats/BoyHair.gltf",
+    "model": "/assets/models/BoyHair.gltf",
     "texture": "",
     "type": "Hat",
     "price": 0
