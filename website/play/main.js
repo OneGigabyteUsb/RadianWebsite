@@ -1469,7 +1469,6 @@ function animate() {
     delta = clock.getDelta();
     dt = delta * 60;
 	if (dt > 0.99) {
-		console.log(dt)
 		dt = 0.99
 	}
 
