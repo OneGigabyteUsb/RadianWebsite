@@ -1171,7 +1171,7 @@ function loginPage() {
 
 function signupPage() {
 
-    const meRes = await fetch("/api/me");
+    const meRes = fetch("/api/me");
 
     if (meRes.ok) {
         navigate("/home");
