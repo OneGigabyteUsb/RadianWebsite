@@ -1468,6 +1468,9 @@ function animate() {
 
     delta = clock.getDelta();
     dt = delta * 60;
+	if (dt > 0.1) {
+		dt = 0.1
+	}
 
     if (playerHitboxMesh.position.y <= -90) {
        Health = 0
@@ -1512,12 +1515,6 @@ function animate() {
 
         gltf.scene.position.y += velocityY * dt;
         checkPartCollisions();
-
-        // Ground floor constraint fallback
-        //if (gltf.scene.position.y <= groundY) {
-            //gltf.scene.position.y = groundY;
-            //velocityY = 0;
-        //}
 
         moveDirection.set(0, 0, 0);
 
