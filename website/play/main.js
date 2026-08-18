@@ -611,7 +611,7 @@ async function loadMapForCurrentGame() {
         return loadMapFromURL("maps/Demo.json");
     }
     if (GAME_ID === '2') {
-        return loadMapFromURL("maps/Demo.json");
+        return loadMapFromURL("maps/a.json");
     }
 
     try {
@@ -988,7 +988,8 @@ fetch('/api/me', { credentials: 'include' })
     .then(me => { myUserId = me.id; })
     .catch(() => console.warn('[multiplayer] could not fetch /api/me -- are you logged in?'));
 
-const multiplayerSocket = new WebSocket(`ws://localhost:8001/?game_id=${encodeURIComponent(GAME_ID)}`);
+const wsProtocol = location.protocol === "https:" ? "wss:" : "ws:";
+const multiplayerSocket = new WebSocket(`${wsProtocol}//${location.host}/ws?game_id=${encodeURIComponent(GAME_ID)}`);
 const otherPlayers = {}; // user_id (string) -> remote player record, see buildRemotePlayer()
 
 multiplayerSocket.addEventListener('open', () => console.log('[multiplayer] connected'));
