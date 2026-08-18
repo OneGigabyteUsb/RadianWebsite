@@ -513,6 +513,76 @@ export default {
             }
         }
 
+        // buildRemotePlayer() in main.js fetches this for every other
+        // player it spawns in-game, to color/equip their avatar. Public
+        // and read-only, same as viewing a profile -- no session needed.
+        // Matched narrowly (numeric id only) so it doesn't shadow
+        // /api/me/avatar or any other /api/<word>/... route above.
+        const publicAvatarMatch = url.pathname.match(/^\/api\/(\d+)\/avatar$/);
+        if (publicAvatarMatch && request.method === "GET") {
+            try {
+                const targetId = Number(publicAvatarMatch[1]);
+
+                const avatar = await env.DB
+                    .prepare(`
+                        SELECT
+                            u.id,
+                            u.username,
+                            a.head_color,
+                            a.torso_color,
+                            a.right_arm_color,
+                            a.left_arm_color,
+                            a.right_leg_color,
+                            a.left_leg_color,
+                            a.accessory_ids,
+                            a.face_id
+                        FROM users u
+                        LEFT JOIN avatars a
+                            ON a.user_id = u.id
+                        WHERE u.id = ? AND u.is_deleted = 0
+                    `)
+                    .bind(targetId)
+                    .first();
+
+                if (!avatar) {
+                    return Response.json({
+                        error: "User not found."
+                    }, {
+                        status: 404
+                    });
+                }
+
+                return Response.json({
+                    id: avatar.id,
+                    username: avatar.username,
+
+                    colors: {
+                        head: avatar.head_color || "#ffffff",
+                        torso: avatar.torso_color || "#ffffff",
+                        right_arm: avatar.right_arm_color || "#ffffff",
+                        left_arm: avatar.left_arm_color || "#ffffff",
+                        right_leg: avatar.right_leg_color || "#ffffff",
+                        left_leg: avatar.left_leg_color || "#ffffff"
+                    },
+
+                    accessories: {
+                        ids: JSON.parse(avatar.accessory_ids || "[]")
+                    },
+
+                    face_id: avatar.face_id || 1
+                });
+
+            } catch (error) {
+                console.error("Public avatar error:", error);
+
+                return Response.json({
+                    error: "Internal server error."
+                }, {
+                    status: 500
+                });
+            }
+        }
+
         if (url.pathname === "/api/me/friends" && request.method === "GET") {
             try {
                 const cookie = request.headers.get("Cookie") || "";
