@@ -19,5 +19,21 @@
       "database_name": "radian-db",
       "database_id": "0403b0c1-50c5-4467-85f2-149d41e63581"
     }
+  ],
+
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "GAME_ROOM",
+        "class_name": "GameRoom"
+      }
+    ]
+  },
+
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["GameRoom"]
+    }
   ]
 }
