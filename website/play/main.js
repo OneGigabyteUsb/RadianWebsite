@@ -781,7 +781,7 @@ function applyAvatarColors(root, colors) {
 
 // Fetched once and shared by every player (local + remote) instead of
 // re-fetching items.json per player.
-const itemsCatalogPromise = fetch('./api/items.json')
+const itemsCatalogPromise = fetch('/api/items.json')
     .then(r => (r.ok ? r.json() : []))
     .catch(() => []);
 
