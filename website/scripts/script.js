@@ -1181,6 +1181,7 @@ function signupPage() {
     const me = meRes.json();
     if (me.is_banned) {
         navigate("/banned");
+    }
         
   
     app.innerHTML = `
