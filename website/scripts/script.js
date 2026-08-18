@@ -100,9 +100,10 @@ function router() {
         signupPage();
     }
     else if (path === "/builder") {
+        avatarPage();
     }
     else if (path === "/catalog") {
-        avatarPage();
+        catalogPage();
     }
     else if (path.startsWith("/profile/")) {
         const id = path.split("/profile/")[1];
@@ -256,10 +257,9 @@ async function homePage() {
 }
 
 /**
- * Populates the Friends panel. There's no friends-list endpoint on the
- * server yet (server.py only tracks friend_count as a number, not the
- * actual list) -- this tries /api/me/friends in case it exists, and falls
- * back to a clear empty state instead of showing fake placeholder people.
+ * Populates the Friends panel via GET /api/me/friends. Falls back to a
+ * clear empty state if the request fails for any reason instead of
+ * showing fake placeholder people.
  */
 async function loadHomeFriends() {
     const row = document.getElementById("home-friends-row");
