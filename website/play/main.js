@@ -5,7 +5,6 @@ import { OBB } from "three/addons/math/OBB.js";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 
 THREE.Cache.enabled = true;
-
 const scene = new THREE.Scene()
 
 //=====ServerPath=====\\
@@ -598,20 +597,9 @@ window.defaultMap = defaultMap;
 window.loadMapFromURL = loadMapFromURL;
 window.clearMap = clearMap;
 
-/**
- * Loads the map for whichever game this page was opened for. Looks up
- * GAME_ID (from the /play/<id> URL) in the site's game catalog to find
- * that game's name, then loads maps/<name>_<id>.json -- matching the
- * "name_id" file naming convention. Falls back to the old hardcoded demo
- * map if anything about that lookup fails, so a bad/missing map file
- * doesn't leave the page stuck blank.
- */
 async function loadMapForCurrentGame() {
-    if (GAME_ID === '1') {
+    if (GAME_ID === 'main') {
         return loadMapFromURL("maps/Demo.json");
-    }
-    if (GAME_ID === '2') {
-        return loadMapFromURL("maps/a.json");
     }
 
     try {
@@ -724,12 +712,6 @@ gltf.scene.traverse((obj) => {
     characterMeshes.push(obj);
 });
 
-//---Avatar Colors---\\\
-// Maps the avatar builder's part keys (head/torso/right_arm/left_arm/
-// right_leg/left_leg -- same keys as avatars.json on the server) to the
-// mesh names inside models/model.gltf. Leg1/Leg2 -> left_leg/right_leg is
-// a guess based on typical rig ordering; if the legs come out swapped
-// in-game, just flip which one maps to which here.
 const AVATAR_PART_MESH_NAMES = {
     head: ["Head_1"],
     torso: ["Torso_1"],
@@ -739,23 +721,6 @@ const AVATAR_PART_MESH_NAMES = {
     right_leg: ["Leg2"],
 };
 
-/**
- * Recolors a character root (your own gltf.scene, or a remote player's
- * SkeletonUtils clone) to match a fetched avatar's colors. Clones each
- * targeted mesh's material the first time it's touched -- SkeletonUtils
- * .clone()/Object3D.clone() share material *references* by default, so
- * without this, recoloring one player's torso would recolor everyone's.
- *
- * Ownership is tracked with this WeakSet (not obj.userData) on purpose:
- * Three.js's clone() deep-copies userData onto every new clone, so a
- * userData flag set on your own player's mesh would get copied onto
- * every remote player's mesh too, even though they still shared the
- * same underlying material object -- applyAvatarColors would then think
- * that shared material was "already private" and mutate it directly,
- * recoloring every player who happened to share it. A WeakSet keyed on
- * the actual mesh instance doesn't get carried over by cloning, so each
- * newly-built mesh (local or remote) always starts unmarked.
- */
 const meshesWithOwnMaterial = new WeakSet();
 
 function applyAvatarColors(root, colors) {
@@ -773,27 +738,12 @@ function applyAvatarColors(root, colors) {
     });
 }
 
-//---Hats---\\\
-// Hats use `model` and `texture` together (unlike t-shirts, which just
-// paint a texture onto the existing torso mesh) -- the item's own GLTF
-// is loaded, textured, and attached near the head. Mirrors the same
-// equip logic used in the avatar builder's preview (script.js).
-
-// Fetched once and shared by every player (local + remote) instead of
-// re-fetching items.json per player.
 const itemsCatalogPromise = fetch('/api/items.json')
     .then(r => (r.ok ? r.json() : []))
     .catch(() => []);
 
-const equippedHatByRoot = new WeakMap(); // root -> currently-attached hat Group, so re-equipping swaps cleanly instead of stacking
+const equippedHatByRoot = new WeakMap(); 
 
-/**
- * Finds a bone whose name looks like "head" inside root's skeleton(s), if
- * any. Attaching the hat to this bone (rather than the head mesh itself)
- * is what makes it track head movement during animation -- a SkinnedMesh
- * node's own transform typically stays static; the actual motion comes
- * from the bones deforming its vertices.
- */
 function findHeadBone(root) {
     let headBone = null;
     root.traverse((obj) => {
@@ -803,10 +753,6 @@ function findHeadBone(root) {
     return headBone;
 }
 
-// Small upward offset from the head bone's origin so the hat sits on top
-// of the head rather than at its center -- there's no bone geometry to
-// measure, so this is a tuned guess; adjust if it looks off with real hat
-// models (it also depends on each hat model's own origin/pivot).
 const HAT_BONE_Y_OFFSET = 0.18;
 
 async function equipHat(root, avatar) {
@@ -857,10 +803,6 @@ async function equipHat(root, avatar) {
         hatGroup.position.set(0, HAT_BONE_Y_OFFSET, 0);
         headBone.add(hatGroup);
     } else {
-        // Fallback: no skeleton/head bone found, so the hat won't track
-        // head-bob animation, but it'll still sit in the right place for
-        // an idle pose. Uses the head mesh's own local bounding box so it
-        // doesn't matter how root itself is rotated/positioned.
         const headMesh = root.getObjectByName("Head_1");
         if (headMesh) {
             headMesh.geometry.computeBoundingBox();
@@ -879,14 +821,6 @@ async function equipHat(root, avatar) {
     equippedHatByRoot.set(root, hatGroup);
 }
 
-//---Shirts---\\\
-// T-shirts ignore `model` entirely (unlike hats, which use model+texture
-// together) -- the item's texture is painted directly onto the model's
-// existing "T-shirt" overlay mesh. Reuses meshesWithOwnMaterial (the same
-// WeakSet applyAvatarColors() uses) so this mesh only gets cloned to a
-// private material once per root, for the same reason described above:
-// SkeletonUtils.clone() shares material references, so without this every
-// remote player would show whatever shirt texture was set last.
 async function equipShirt(root, avatar) {
     const shirtMesh = root.getObjectByName("T-shirt");
     if (!shirtMesh) return;
@@ -1002,9 +936,6 @@ multiplayerSocket.addEventListener('message', (event) => {
 });
 
 function buildRemotePlayer(id) {
-    // A real clone of your character, not a placeholder -- SkeletonUtils.clone
-    // is required (instead of gltf.scene.clone()) because this model is
-    // skinned/rigged; a plain clone shares bones and breaks animation.
     const root = SkeletonUtils.clone(gltf.scene);
     root.traverse((obj) => {
         if (obj.isMesh) {
@@ -1013,9 +944,7 @@ function buildRemotePlayer(id) {
         }
     });
     scene.add(root);
-
-    // Public, read-only endpoint -- no auth needed to see another
-    // player's avatar colors, same as viewing their profile.
+	
     fetch(`/api/${id}/avatar`, { credentials: 'include' })
         .then(r => r.json())
         .then(avatar => {
@@ -1029,9 +958,6 @@ function buildRemotePlayer(id) {
     const animMap = {};
     gltf.animations.forEach((clip) => {
         const action = mixer.clipAction(clip);
-        // Same "always playing, weight-only crossfade" pattern as the
-        // local player's animationsMap setup above -- see the comment
-        // there for why this matters.
         action.enabled = true;
         action.setEffectiveWeight(0);
         action.play();
@@ -1050,11 +976,6 @@ function buildRemotePlayer(id) {
         targetRot: [root.quaternion.x, root.quaternion.y, root.quaternion.z, root.quaternion.w],
     };
 
-    // Mirror the local player's mixer 'finished' handling: without this,
-    // a one-shot gesture (Point) played on a remote player has nothing to
-    // pull it back to idle once it finishes, so it stays frozen on its
-    // last frame for everyone else until a different anim message happens
-    // to arrive.
     mixer.addEventListener('finished', (e) => {
         if (e.action === animMap['point']) {
             setRemoteAnimation(player, 'Idle');
@@ -1078,11 +999,6 @@ function setRemoteAnimation(player, animName) {
         next.setLoop(THREE.LoopRepeat);
     }
 
-    // The incoming action's weight must be explicitly set to 1 *before*
-    // crossFadeTo -- leaving it at 0 and trusting crossFadeTo's internal
-    // fadeIn to ramp it up does NOT work (verified against real
-    // Three.js: the weight silently stays at 0 the whole time). This is
-    // the same fix as fadeToAnimation() below, for the same reason.
     next.enabled = true;
     next.setEffectiveTimeScale(1);
     next.setEffectiveWeight(1);
