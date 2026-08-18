@@ -100,10 +100,10 @@ function router() {
         signupPage();
     }
     else if (path === "/builder") {
-        avatarPage();
+        
     }
     else if (path === "/catalog") {
-        catalogPage();
+        avatarPage();
     }
     else if (path.startsWith("/profile/")) {
         const id = path.split("/profile/")[1];
