@@ -1170,6 +1170,19 @@ function loginPage() {
 
 
 function signupPage() {
+
+    const meRes = await fetch("/api/me");
+
+    if (meRes.ok) {
+        navigate("/home");
+        return;
+    }
+
+    const me = await meRes.json();
+    if (me.is_banned) {
+        navigate("/banned");
+        
+  
     app.innerHTML = `
         <div class="login-page">
             <div class="login-card">
