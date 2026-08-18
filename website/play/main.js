@@ -1470,6 +1470,7 @@ function animate() {
     dt = delta * 60;
 	if (dt > 0.7) {
 		dt = 0.7
+		console.log(delta)
 	}
 
     if (playerHitboxMesh.position.y <= -90) {
