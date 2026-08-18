@@ -168,10 +168,6 @@ export default {
             });
         }
 
-        // showBioEditor() in script.js POSTs the new bio text here, then
-        // re-renders the profile with whatever this returns -- so the
-        // response needs the same shape as /api/me (friend_count etc.),
-        // not just the updated bio field.
         if (url.pathname === "/api/me/bio" && request.method === "POST") {
             try {
                 const cookie = request.headers.get("Cookie") || "";
@@ -244,6 +240,96 @@ export default {
 
             } catch (error) {
                 console.error("Update bio error:", error);
+
+                return Response.json({
+                    error: "Internal server error."
+                }, {
+                    status: 500
+                });
+            }
+        }
+
+        if (url.pathname === "/api/me/avatar" && request.method === "GET") {
+            try {
+                const cookie = request.headers.get("Cookie") || "";
+                const match = cookie.match(/radian_session=([^;]+)/);
+
+                if (!match) {
+                    return Response.json({
+                        error: "Not logged in."
+                    }, {
+                        status: 401
+                    });
+                }
+
+                const session = await env.DB
+                    .prepare(`
+                SELECT user_id
+                FROM sessions
+                WHERE session_id = ?
+            `)
+                    .bind(match[1])
+                    .first();
+
+                if (!session) {
+                    return Response.json({
+                        error: "Not logged in."
+                    }, {
+                        status: 401
+                    });
+                }
+
+                const avatar = await env.DB
+                    .prepare(`
+                SELECT
+                    u.id,
+                    u.username,
+                    a.head_color,
+                    a.torso_color,
+                    a.right_arm_color,
+                    a.left_arm_color,
+                    a.right_leg_color,
+                    a.left_leg_color,
+                    a.accessory_ids,
+                    a.face_id
+                FROM users u
+                LEFT JOIN avatars a
+                    ON a.user_id = u.id
+                WHERE u.id = ?
+            `)
+                    .bind(session.user_id)
+                    .first();
+
+                if (!avatar) {
+                    return Response.json({
+                        error: "User not found."
+                    }, {
+                        status: 404
+                    });
+                }
+
+                return Response.json({
+                    id: avatar.id,
+                    username: avatar.username,
+
+                    colors: {
+                        head: avatar.head_color || "#ffffff",
+                        torso: avatar.torso_color || "#ffffff",
+                        right_arm: avatar.right_arm_color || "#ffffff",
+                        left_arm: avatar.left_arm_color || "#ffffff",
+                        right_leg: avatar.right_leg_color || "#ffffff",
+                        left_leg: avatar.left_leg_color || "#ffffff"
+                    },
+
+                    accessories: {
+                        ids: JSON.parse(avatar.accessory_ids || "[]")
+                    },
+
+                    face_id: avatar.face_id || 1
+                });
+
+            } catch (error) {
+                console.error("Avatar error:", error);
 
                 return Response.json({
                     error: "Internal server error."
@@ -571,7 +657,9 @@ export default {
                     });
                 }
 
-                return Response.json({ status: "accepted" });
+                return Response.json({
+                    status: "accepted"
+                });
 
             } catch (error) {
                 console.error("Accept friend request error:", error);
@@ -641,7 +729,9 @@ export default {
                     });
                 }
 
-                return Response.json({ status: "declined" });
+                return Response.json({
+                    status: "declined"
+                });
 
             } catch (error) {
                 console.error("Decline friend request error:", error);
@@ -730,9 +820,9 @@ export default {
                                 if (friendship.status === "accepted") {
                                     friendshipStatus = "friends";
                                 } else if (friendship.status === "pending") {
-                                    friendshipStatus = friendship.requester_id === session.user_id
-                                        ? "pending_outgoing"
-                                        : "pending_incoming";
+                                    friendshipStatus = friendship.requester_id === session.user_id ?
+                                        "pending_outgoing" :
+                                        "pending_incoming";
                                 }
                             }
                         }
@@ -840,9 +930,9 @@ export default {
                                 if (f.status === "accepted") {
                                     friendshipStatus = "friends";
                                 } else if (f.status === "pending") {
-                                    friendshipStatus = f.requester_id === viewerId
-                                        ? "pending_outgoing"
-                                        : "pending_incoming";
+                                    friendshipStatus = f.requester_id === viewerId ?
+                                        "pending_outgoing" :
+                                        "pending_incoming";
                                 }
                             }
                         }
@@ -851,9 +941,9 @@ export default {
                     // last_seen is stored via SQLite's datetime('now'), e.g.
                     // "2026-08-14 12:00:00" (UTC, no offset) -- normalize it
                     // to ISO-8601 so Date.parse treats it as UTC correctly.
-                    const lastSeenMs = u.last_seen
-                        ? Date.parse(u.last_seen.replace(" ", "T") + "Z")
-                        : NaN;
+                    const lastSeenMs = u.last_seen ?
+                        Date.parse(u.last_seen.replace(" ", "T") + "Z") :
+                        NaN;
 
                     const online = !Number.isNaN(lastSeenMs) &&
                         (now - lastSeenMs) < ONLINE_WINDOW_MS;
