@@ -90,6 +90,18 @@ export default {
             return env.WEBSITE.fetch(new Request(assetUrl, request));
         }
 
+        // These are static catalog files (served from the assets bucket),
+        // not real API routes -- they live under /api/ by convention but
+        // must be excluded from the "/api/* -> 404" catch-all below or
+        // loadGames()/catalogPage()/avatarPage() in script.js can never
+        // load them.
+        if (
+            (url.pathname === "/api/games.json" || url.pathname === "/api/items.json") &&
+            request.method === "GET"
+        ) {
+            return env.WEBSITE.fetch(request);
+        }
+
         if (url.pathname === "/api/me" && request.method === "GET") {
             const cookie = request.headers.get("Cookie") || "";
 
@@ -330,6 +342,168 @@ export default {
 
             } catch (error) {
                 console.error("Avatar error:", error);
+
+                return Response.json({
+                    error: "Internal server error."
+                }, {
+                    status: 500
+                });
+            }
+        }
+
+        // avatarPage()'s color picker (script.js) posts here whenever the
+        // user picks a new hex color for a body part.
+        if (url.pathname === "/api/me/avatar/color" && request.method === "POST") {
+            try {
+                const cookie = request.headers.get("Cookie") || "";
+                const match = cookie.match(/radian_session=([^;]+)/);
+
+                if (!match) {
+                    return Response.json({
+                        error: "Not logged in."
+                    }, {
+                        status: 401
+                    });
+                }
+
+                const session = await env.DB
+                    .prepare("SELECT user_id FROM sessions WHERE session_id = ?")
+                    .bind(match[1])
+                    .first();
+
+                if (!session) {
+                    return Response.json({
+                        error: "Not logged in."
+                    }, {
+                        status: 401
+                    });
+                }
+
+                const body = await request.json();
+                const part = body.part;
+                const color = body.color;
+
+                // Whitelist the part so it's safe to interpolate into the
+                // column name below -- these must match AVATAR_PARTS in
+                // script.js exactly.
+                const VALID_PARTS = new Set([
+                    "head", "torso", "right_arm", "left_arm", "right_leg", "left_leg"
+                ]);
+
+                if (!VALID_PARTS.has(part)) {
+                    return Response.json({
+                        error: "Invalid body part."
+                    }, {
+                        status: 400
+                    });
+                }
+
+                if (typeof color !== "string" || !/^#[0-9a-fA-F]{6}$/.test(color)) {
+                    return Response.json({
+                        error: "Color must be a 6-digit hex value like #ffffff."
+                    }, {
+                        status: 400
+                    });
+                }
+
+                const column = `${part}_color`;
+
+                await env.DB
+                    .prepare(`
+                        INSERT INTO avatars (user_id, ${column})
+                        VALUES (?, ?)
+                        ON CONFLICT(user_id) DO UPDATE SET ${column} = excluded.${column}
+                    `)
+                    .bind(session.user_id, color)
+                    .run();
+
+                return Response.json({ part, color });
+
+            } catch (error) {
+                console.error("Update avatar color error:", error);
+
+                return Response.json({
+                    error: "Internal server error."
+                }, {
+                    status: 500
+                });
+            }
+        }
+
+        // wireCatalogGridClicks() in script.js posts here when an item in
+        // the /builder catalog grid is clicked, to equip or unequip it.
+        if (url.pathname === "/api/me/avatar/accessory" && request.method === "POST") {
+            try {
+                const cookie = request.headers.get("Cookie") || "";
+                const match = cookie.match(/radian_session=([^;]+)/);
+
+                if (!match) {
+                    return Response.json({
+                        error: "Not logged in."
+                    }, {
+                        status: 401
+                    });
+                }
+
+                const session = await env.DB
+                    .prepare("SELECT user_id FROM sessions WHERE session_id = ?")
+                    .bind(match[1])
+                    .first();
+
+                if (!session) {
+                    return Response.json({
+                        error: "Not logged in."
+                    }, {
+                        status: 401
+                    });
+                }
+
+                const body = await request.json();
+                const itemId = Number(body.item_id);
+                const equipped = Boolean(body.equipped);
+
+                if (!Number.isInteger(itemId)) {
+                    return Response.json({
+                        error: "Invalid item ID."
+                    }, {
+                        status: 400
+                    });
+                }
+
+                const existing = await env.DB
+                    .prepare("SELECT accessory_ids FROM avatars WHERE user_id = ?")
+                    .bind(session.user_id)
+                    .first();
+
+                let ids = [];
+                try {
+                    ids = JSON.parse(existing?.accessory_ids || "[]");
+                    if (!Array.isArray(ids)) ids = [];
+                } catch {
+                    ids = [];
+                }
+
+                if (equipped) {
+                    if (!ids.includes(itemId)) ids.push(itemId);
+                } else {
+                    ids = ids.filter((id) => id !== itemId);
+                }
+
+                const idsJson = JSON.stringify(ids);
+
+                await env.DB
+                    .prepare(`
+                        INSERT INTO avatars (user_id, accessory_ids)
+                        VALUES (?, ?)
+                        ON CONFLICT(user_id) DO UPDATE SET accessory_ids = excluded.accessory_ids
+                    `)
+                    .bind(session.user_id, idsJson)
+                    .run();
+
+                return Response.json({ item_id: itemId, equipped, accessories: ids });
+
+            } catch (error) {
+                console.error("Update avatar accessory error:", error);
 
                 return Response.json({
                     error: "Internal server error."
@@ -735,6 +909,77 @@ export default {
 
             } catch (error) {
                 console.error("Decline friend request error:", error);
+
+                return Response.json({
+                    error: "Internal server error."
+                }, {
+                    status: 500
+                });
+            }
+        }
+
+        // renderRelationActions() in script.js posts here for both
+        // "Remove Friend" (an accepted friendship) and "Cancel Request"
+        // (a pending one this user sent) -- either way it's the same
+        // "delete whatever friendship row connects these two users" op.
+        if (url.pathname === "/api/friends/remove" && request.method === "POST") {
+            try {
+                const cookie = request.headers.get("Cookie") || "";
+                const match = cookie.match(/radian_session=([^;]+)/);
+
+                if (!match) {
+                    return Response.json({
+                        error: "Not logged in."
+                    }, {
+                        status: 401
+                    });
+                }
+
+                const session = await env.DB
+                    .prepare("SELECT user_id FROM sessions WHERE session_id = ?")
+                    .bind(match[1])
+                    .first();
+
+                if (!session) {
+                    return Response.json({
+                        error: "Not logged in."
+                    }, {
+                        status: 401
+                    });
+                }
+
+                const body = await request.json();
+                const targetId = Number(body.target_id);
+
+                if (!Number.isInteger(targetId)) {
+                    return Response.json({
+                        error: "Invalid user ID."
+                    }, {
+                        status: 400
+                    });
+                }
+
+                const result = await env.DB
+                    .prepare(`
+                        DELETE FROM friendships
+                        WHERE (requester_id = ? AND recipient_id = ?)
+                           OR (requester_id = ? AND recipient_id = ?)
+                    `)
+                    .bind(session.user_id, targetId, targetId, session.user_id)
+                    .run();
+
+                if (!result.meta.changes) {
+                    return Response.json({
+                        error: "No friendship or pending request with that user."
+                    }, {
+                        status: 404
+                    });
+                }
+
+                return Response.json({ status: "removed" });
+
+            } catch (error) {
+                console.error("Remove friend error:", error);
 
                 return Response.json({
                     error: "Internal server error."
@@ -1239,6 +1484,94 @@ export default {
 
             } catch (error) {
                 console.error("Login error:", error);
+
+                return Response.json({
+                    error: "Internal server error."
+                }, {
+                    status: 500
+                });
+            }
+        }
+
+        // adminPage() in script.js posts here from the Ban button. The
+        // page itself already gates on is_staff/is_moderator client-side,
+        // but that's just UI -- this re-checks server-side since the
+        // client can't be trusted to enforce it.
+        if (url.pathname === "/api/admin/ban" && request.method === "POST") {
+            try {
+                const cookie = request.headers.get("Cookie") || "";
+                const match = cookie.match(/radian_session=([^;]+)/);
+
+                if (!match) {
+                    return Response.json({
+                        error: "Not logged in."
+                    }, {
+                        status: 401
+                    });
+                }
+
+                const session = await env.DB
+                    .prepare("SELECT user_id FROM sessions WHERE session_id = ?")
+                    .bind(match[1])
+                    .first();
+
+                if (!session) {
+                    return Response.json({
+                        error: "Not logged in."
+                    }, {
+                        status: 401
+                    });
+                }
+
+                const actor = await env.DB
+                    .prepare("SELECT is_staff, is_moderator FROM users WHERE id = ?")
+                    .bind(session.user_id)
+                    .first();
+
+                if (!actor || (!actor.is_staff && !actor.is_moderator)) {
+                    return Response.json({
+                        error: "Not authorized."
+                    }, {
+                        status: 403
+                    });
+                }
+
+                const body = await request.json();
+                const targetId = Number(body.id);
+
+                if (!Number.isInteger(targetId)) {
+                    return Response.json({
+                        error: "Invalid user ID."
+                    }, {
+                        status: 400
+                    });
+                }
+
+                const result = await env.DB
+                    .prepare("UPDATE users SET is_banned = 1 WHERE id = ?")
+                    .bind(targetId)
+                    .run();
+
+                if (!result.meta.changes) {
+                    return Response.json({
+                        error: "No user with that ID."
+                    }, {
+                        status: 404
+                    });
+                }
+
+                const target = await env.DB
+                    .prepare("SELECT id, username FROM users WHERE id = ?")
+                    .bind(targetId)
+                    .first();
+
+                return Response.json({
+                    id: target.id,
+                    username: target.username
+                });
+
+            } catch (error) {
+                console.error("Admin ban error:", error);
 
                 return Response.json({
                     error: "Internal server error."
