@@ -43,5 +43,14 @@
     "texture": "",
     "type": "Hat",
     "price": 0
+  },
+  {
+    "Id": 6,
+    "name": "Builder's Hat",
+    "description": "Now your not bald.",
+    "model": "/assets/models/BuildersHat.gltf",
+    "texture": "",
+    "type": "Hat",
+    "price": 0
   }
 ]
