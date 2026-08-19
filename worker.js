@@ -1531,6 +1531,15 @@ export default {
                 const body = await request.json();
 
                 const username = (body.username || "").trim();
+
+                if (!/^[A-Za-z0-9_]+$/.test(username)) {
+                    return Response.json({
+                        error: "Username can only contain letters, numbers, and underscores."
+                    }, {
+                        status: 400
+                    });
+                }
+                
                 const password = body.password || "";
 
                 if (!username || !password) {
