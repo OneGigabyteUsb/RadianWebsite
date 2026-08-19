@@ -309,7 +309,7 @@ async function loadHomeLastPlayed() {
         row.innerHTML = games.slice(0, 100).map(game => `
             <a class="game-tile" href="/games/${game.id}" data-link>
                 <div class="game-tile-thumb">
-                    <img src="thumbnails/${game.name}.png" alt="${game.name}"
+                    <img src="thumbnails/games/${game.name}.png" alt="${game.name}"
                          onerror="this.parentElement.textContent='${game.name.replace(/'/g, "\\'")}'">
                 </div>
                 <div class="game-tile-name">${game.name}</div>
@@ -669,19 +669,6 @@ async function requestsPage() {
     });
 }
 
-
-/**
- * Builds the item-card grid HTML shared by /catalog and the avatar builder
- * (/builder). Uses the real items.json schema: Id, name, description,
- * model (a GLTF path, not a flat image -- there's no rendered-thumbnail
- * pipeline yet), price. Thumbnail images are looked up by convention at
- * Thumbnails/<name>.png; if that 404s, it falls back to an "IMAGE"
- * placeholder rather than a broken image icon.
- *
- * `equippedIds` (optional Set of item ids) highlights equipped items and
- * makes cards clickable to equip/unequip -- used by the avatar builder,
- * not the plain catalog page (pass null there).
- */
 function renderCatalogGrid(items, equippedIds, onEquipChange) {
     if (items.length === 0) {
         return `<p class="catalog-empty">No items in the catalog yet.</p>`;
@@ -694,7 +681,7 @@ function renderCatalogGrid(items, equippedIds, onEquipChange) {
             <div class="catalog-item ${isEquipped ? 'equipped' : ''}"
                  ${clickable ? `data-item-id="${item.Id}" data-equipped="${isEquipped}"` : ""}>
                 <div class="catalog-item-thumb">
-                    <img src="Thumbnails/${item.name}.png" alt="${item.name}"
+                    <img src="thumbnails/items/${item.name}.png" alt="${item.name}"
                          onerror="this.replaceWith(Object.assign(document.createElement('span'), {textContent: 'IMAGE'}))">
                 </div>
                 <div class="catalog-item-name">${item.name}</div>
@@ -723,12 +710,6 @@ function wireCatalogGridClicks(container, onEquipChange) {
     });
 }
 
-/**
- * Catalog page (/catalog) -- avatar preview / categories / item grid,
- * matching the concept art. Items load from /api/items.json (a plain
- * static file, same pattern as games.json); if it's missing this shows a
- * real "nothing here yet" state instead of fabricated items.
- */
 async function catalogPage() {
     app.innerHTML = `<p>Loading...</p>`;
 
@@ -766,24 +747,12 @@ async function catalogPage() {
 
     const viewMoreBtn = document.getElementById("view-more-btn");
     if (viewMoreBtn) {
-        // No pagination endpoint yet either -- placeholder until the
-        // catalog backend supports paging through more than the first 10.
         viewMoreBtn.addEventListener("click", () => {
             console.log("View More Items -- catalog pagination isn't built yet.");
         });
     }
 }
 
-/**
- * Avatar builder page (/builder) -- body-part color swatches + a catalog
- * panel where clicking an item equips/unequips it, matching the concept
- * art. The "Threejs Scene With Model" preview panel is a placeholder for
- * now: rendering a live, recolorable 3D avatar in the site (separate from
- * the game engine) is its own project -- it needs Three.js loaded here,
- * the character model imported, and knowledge of that model's mesh names
- * to know which mesh corresponds to "torso" vs "left_leg" etc. Worth
- * doing as a follow-up once you're ready for it.
- */
 const AVATAR_PARTS = ["head", "torso", "right_arm", "left_arm", "right_leg", "left_leg"];
 const AVATAR_PART_LABELS = {
     head: "Head", torso: "Torso", right_arm: "right arm",
@@ -809,9 +778,6 @@ async function avatarPage() {
     renderAvatarPage(avatar, items);
 }
 
-// Same part-key -> mesh-name mapping used in main.js, so the builder
-// preview matches what shows up in-game. Leg1/Leg2 -> left_leg/right_leg
-// is a best guess -- swap here (and in main.js) if it's backwards.
 const AVATAR_PREVIEW_MESH_NAMES = {
     head: ["Head_1"],
     torso: ["Torso_1"],
@@ -821,26 +787,8 @@ const AVATAR_PREVIEW_MESH_NAMES = {
     right_leg: ["Leg2"],
 };
 
-// Tracks the currently-running preview's handle ({ cleanup, setColor }),
-// so re-rendering the avatar page (e.g. after equipping an item) doesn't
-// leave the old renderer/animation loop running against a canvas that's
-// no longer in the DOM, and so the color picker can live-update the model.
 let avatarPreviewHandle = null;
 
-/**
- * Sets up a live Three.js preview of the avatar in the #avatar-model-canvas
- * canvas: loads the real rigged model (same file main.js uses), colors
- * each named mesh from the avatar's saved colors, and equips whatever's
- * currently in avatar.accessories.ids against the items catalog:
- *   - T-shirt: `model` is ignored entirely -- the item's texture is
- *     painted onto the model's separate "T-shirt" overlay mesh, which
- *     stays hidden until something is actually equipped.
- *   - Hat: `model` and `texture` are used together -- the item's own
- *     GLTF is loaded, textured, and parented just above the head mesh.
- * Falls back to a plain capsule if the base model fails to load.
- * Returns a handle with setColor() (for the live color picker) and
- * cleanup() (disposes the renderer/controls and stops the render loop).
- */
 async function initAvatarPreview(avatar, items) {
     const canvas = document.getElementById("avatar-model-canvas");
     if (!canvas) return { setColor() {}, cleanup() {} };
@@ -891,14 +839,9 @@ async function initAvatarPreview(avatar, items) {
         });
         scene.add(model);
 
-        // Equip whatever's on this avatar right now, matched against the
-        // items catalog for type/model/texture.
         const equippedIds = new Set(avatar.accessories.ids);
         const equippedItems = items.filter((item) => equippedIds.has(item.Id));
 
-        // Any "T-shirt" mesh in the model starts hidden -- it's a
-        // separate overlay mesh, shown only once a T-shirt item is
-        // actually equipped (matches main.js's in-game handling).
         const shirtMesh = model.getObjectByName("T-shirt");
         if (shirtMesh) {
             shirtMesh.material = shirtMesh.material.clone();
@@ -937,10 +880,6 @@ async function initAvatarPreview(avatar, items) {
                         }
                     });
 
-                    // Sit the hat on top of the head mesh's bounding box.
-                    // model.gltf's own head placement/scale isn't known
-                    // ahead of time, so this reads it back rather than
-                    // hardcoding a position.
                     const headMesh = partMeshes.head?.[0];
                     if (headMesh) {
                         const headBox = new THREE.Box3().setFromObject(headMesh);
