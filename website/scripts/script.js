@@ -363,7 +363,7 @@ async function gameDetailPage(id) {
                             <div class="game-detail-title">${game.name}</div>
                             <div class="game-detail-byline">By ${game.creatorName}</div>
                         </div>
-                        <a class="game-detail-play-btn" href="/play/${game.id}">Play</a>
+                        <a class="game-detail-play-btn" href="/play/?id=${game.id}">Play</a>
                     </div>
                 </div>
                 <div class="game-detail-description">
