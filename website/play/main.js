@@ -353,6 +353,7 @@ function loadMap(mapData) {
  
     (mapData.parts || []).forEach(partDef => {
         const part = new Part({ parent: "Workspace", ...partDef });
+        window[part.name] = part
         part.addTo(scene);
     });
 
@@ -385,7 +386,7 @@ async function loadMapFromURL(url) {
 }
 
 window.loadMap = loadMap;
-window.Part = Part;
+// window.Part = Part;
 window.Sound = Sound;
 window.THREE = THREE;
 window.scene = scene;
