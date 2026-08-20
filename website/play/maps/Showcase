@@ -194,10 +194,10 @@
     {
       "name": "GlassAccent",
       "x": 12,
-      "y": 3,
+      "y": 0.5,
       "z": -2,
       "color": "#66aaff",
-      "intensity": 7
+      "intensity": 24
     }
   ]
 }
