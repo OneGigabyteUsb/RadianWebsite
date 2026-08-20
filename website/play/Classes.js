@@ -426,10 +426,12 @@ export class PointLight extends BasicClass {
         this.intensity = data.intensity ?? 1;
         this.color = data.color ?? "#ffffff";
 
+        const parent = this.getParentInstance();
+
         this.light = new THREE.PointLight(this.color, this.intensity, 100);
-        this.light.position.x = (this.x ?? 0) + (parentInstance?.x ?? 0);
-        this.light.position.x = (this.y ?? 0) + (parentInstance?.y ?? 0);
-        this.light.position.z = (this.x ?? 0) + (parentInstance?.z ?? 0);
+        this.light.position.x = (this.x ?? 0) + (parent?.x ?? 0);
+        this.light.position.x = (this.y ?? 0) + (parent?.y ?? 0);
+        this.light.position.z = (this.x ?? 0) + (parent?.z ?? 0);
         this.light.castShadow = this.CastShadow ?? false;
 
         this._attachToParent();
