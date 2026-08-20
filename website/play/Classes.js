@@ -1,22 +1,6 @@
-// Classes.js is the UGC/scripting object model for the game. It mirrors the
-// Roblox Instance-hierarchy idea: everything is a named object with a
-// `parent` (by name) and a `children` list, and `Script` instances can run
-// arbitrary UGC code against a `context` object exposing the game API.
-//
-// Import THREE the same way main.js does (via the project's import map) so
-// both files share ONE THREE.js module instance. Mixing a CDN import here
-// with a bare "three" import in main.js used to create two separate THREE
-// instances -- meshes/materials would still render, but anything relying on
-// `instanceof` checks or shared prototypes could silently misbehave.
 import * as THREE from 'three';
 import { OBB } from 'three/addons/math/OBB.js';
 
-//========INSTANCE REGISTRY========\\
-// Every BasicClass-derived object is registered here AND mirrored onto
-// `window[name]` (kept for backwards compatibility with existing code/UGC
-// scripts that look objects up as globals). Two objects sharing a `name`
-// will overwrite each other in both places -- we warn instead of silently
-// clobbering so it's obvious in the console when that happens.
 export const Instances = new Map();
 
 function register(instance) {
@@ -27,12 +11,6 @@ function register(instance) {
     window[instance.name] = instance;
 }
 
-// Used as the default `name` for classes like Part/Frame/Script that don't
-// force a fixed name. Without this, every unnamed Part would default to
-// the literal name "Part" -- and registering it would overwrite
-// window.Part (the CLASS itself, set once by main.js) with a mesh
-// instance, breaking `new window.Part(...)` after the very first unnamed
-// part loaded.
 const nameCounters = new Map();
 function uniqueName(prefix) {
     const n = (nameCounters.get(prefix) ?? 0) + 1;
@@ -40,7 +18,6 @@ function uniqueName(prefix) {
     return `${prefix}_${n}`;
 }
 
-//========CLASSES========\\
 export class BasicClass {
     constructor({
        name = "",
@@ -51,8 +28,6 @@ export class BasicClass {
        this.children = []
     }
 
-    // Call once name/parent are finalized at the end of a subclass
-    // constructor -- links this object into its parent's `children` list.
     _attachToParent() {
         const parentInstance = Instances.get(this.parent);
         if (parentInstance && Array.isArray(parentInstance.children)) {
@@ -75,7 +50,6 @@ export class BasicClass {
         }
     }
 
-    // Convenience for scripts: find a direct child by name.
     findChild(name) {
         return this.children.find(child => child.name === name) ?? null;
     }
@@ -102,8 +76,6 @@ export class ServerScripts extends BasicClass {
        register(this);
     }
 
-    // Runs every Script currently parented under this container.
-    // Call once per frame from the game loop: GameScripts.runAll(context, time)
     runAll(context, time) {
         for (const child of this.children) {
             if (child instanceof Script) {
@@ -113,11 +85,6 @@ export class ServerScripts extends BasicClass {
     }
 }
 
-//========PART PHYSICS SUPPORT========\\
-// Moved in from the old CreatePart: texture/material/geometry caching and
-// the shared collision-relevant arrays. main.js's checkPartCollisions() /
-// stepDynamicParts() read activeParts/dynamicParts/collidableMeshes
-// directly, so they're exported here rather than living only inside Part.
 export const MATERIALS = {
     plastic: "textures/Plastic.png",
     grass: "textures/Grass.png",
@@ -183,8 +150,6 @@ export class Part extends BasicClass {
 
         this.color = data.color ?? "#ffffff";
         this.material = data.material ?? null;
-        // Accept either casing -- the old Classes.js Part used `transparency`,
-        // the old CreatePart used `Transparency`. 1 = fully opaque.
         this.Transparency = data.Transparency ?? data.transparency ?? 1;
 
         this.killbrick = data.killbrick ?? false;
@@ -197,10 +162,6 @@ export class Part extends BasicClass {
         this.velocity = new THREE.Vector3();
         this._grounded = false;
 
-        // Serializable definition for map save/load (serializeCurrentMap in
-        // main.js reads part.def). Includes name/parent/Siting, which the
-        // old CreatePart.def was missing -- seats and named parts used to
-        // silently lose that info on save.
         this.def = {
             name: this.name, parent: this.parent,
             x: this.x, y: this.y, z: this.z,
@@ -248,10 +209,6 @@ export class Part extends BasicClass {
         this.mesh.receiveShadow = true;
 
         if (this.Transparency < 1) {
-            // Materials are cache-shared across every Part with the same
-            // color/material, so clone before touching opacity -- otherwise
-            // making one Part transparent would make every Part using that
-            // cached material transparent too.
             this.mesh.material = Array.isArray(mat) ? mat.map(m => m.clone()) : mat.clone();
             const mats = Array.isArray(this.mesh.material) ? this.mesh.material : [this.mesh.material];
             mats.forEach(m => { m.transparent = true; m.opacity = this.Transparency; });
@@ -322,13 +279,6 @@ export class Script extends BasicClass {
         register(this);
     }
 
-    // NOTE ON SANDBOXING: `new Function` compiles the script with access to
-    // the same global `window` as the rest of the site (it is NOT an
-    // isolated sandbox) -- it just can't see main.js's local/module-scope
-    // variables directly. Anything the script needs should be handed to it
-    // explicitly via `context` rather than relying on globals, and this
-    // should only ever run script content you trust, since UGC scripts can
-    // still reach `window`, `fetch`, etc.
     run(context = this, time = 0) {
         if (this.executeScript) {
             try {
@@ -438,10 +388,6 @@ export class PointLight extends BasicClass {
 
         this.CastShadow = data.CastShadow ?? false;
 
-        // x/y/z are world-space coordinates, same convention as Part.
-        // (Previously this tried to add data.parent.x/.y/.z, but `parent`
-        // is a name string everywhere else in this file, not an object with
-        // coordinates -- that always evaluated to NaN/undefined.)
         this.x = data.x ?? 0;
         this.y = data.y ?? 0;
         this.z = data.z ?? 0;
@@ -457,8 +403,6 @@ export class PointLight extends BasicClass {
         register(this);
     }
 
-    // Matches Part's addTo/removeFrom convention instead of reaching for a
-    // global `scene` variable that this file never actually had access to.
     addTo(targetScene) {
         targetScene.add(this.light);
     }
