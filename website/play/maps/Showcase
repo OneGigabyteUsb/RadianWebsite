@@ -189,7 +189,7 @@
       "y": 1.5,
       "z": -12,
       "color": "#ff5522",
-      "intensity": 1.8
+      "intensity": 14
     },
     {
       "name": "GlassAccent",
@@ -197,7 +197,7 @@
       "y": 3,
       "z": -2,
       "color": "#66aaff",
-      "intensity": 1
+      "intensity": 7
     }
   ]
 }
