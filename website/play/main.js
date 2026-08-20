@@ -3,9 +3,21 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OBB } from "three/addons/math/OBB.js";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
+import {
+    BasicClass, Place, ServerScripts, Script, Part, Frame, PointLight,
+    Instances, activeParts, dynamicParts, collidableMeshes
+} from '/Classes.js';
 
 THREE.Cache.enabled = true;
 const scene = new THREE.Scene()
+
+//=====UGC Object Hierarchy=====\\
+// Root container every Part parents to by default (mirrors Roblox's
+// "Workspace"), and the container Scripts live under and get run from.
+const Workspace = new Place({ name: "Workspace" });
+const GameScripts = new ServerScripts({});
+window.Workspace = Workspace;
+window.GameScripts = GameScripts;
 
 //=====ServerPath=====\\
 function getServerIdFromPath() {
@@ -211,98 +223,7 @@ let previousMousePosition = { x: 0, y: 0 };
 const listener = new THREE.AudioListener();
 camera.add(listener);
 
-const activeParts = [];
-const dynamicParts = [];
-const collidableMeshes = [];
 const sharedTextureLoader = new THREE.TextureLoader();
-const textureCache = new Map();
-const materialCache = new Map();
-const geometryCache = new Map();
-
-function getCachedTexture(url, repeatX, repeatZ) {
-    const key = `${url}|${repeatX}|${repeatZ}`;
-    let tex = textureCache.get(key);
-    if (!tex) {
-        tex = sharedTextureLoader.load(url);
-        tex.colorSpace = THREE.SRGBColorSpace;
-        tex.wrapS = THREE.RepeatWrapping;
-        tex.wrapT = THREE.RepeatWrapping;
-        tex.repeat.set(repeatX, repeatZ);
-        textureCache.set(key, tex);
-    }
-    return tex;
-}
-
-function getCachedMaterial(key, factory) {
-    let mat = materialCache.get(key);
-    if (!mat) {
-        mat = factory();
-        materialCache.set(key, mat);
-    }
-    return mat;
-}
-
-const MATERIALS = {
-    plastic: "textures/Plastic.png",
-    grass: "textures/Grass.png",
-    wood: "textures/Wood.png",
-    planks: "textures/Planks.png",
-    stone: "textures/Stone.png",
-    pebble: "textures/Pebble.png",
-    brick: "textures/Brick.png",
-    concrete: "textures/concrete.png"
-};
-
-class BasicClass {
-    constructor({
-       name = ""
-    }) {
-       this.name = name
-    }
-}
-
-class Part extends BasicClass {
-    constructor(data) {
-        super(data);
-
-       this.x = data.x ?? 0;
-       this.y = data.y ?? 0;
-       this.z = data.z ?? 0;
-
-       this.sx = data.sx ?? 1;
-       this.sy = data.sy ?? 1;
-       this.sz = data.sz ?? 1;
-
-       this.rx = data.rx ?? 0;
-       this.ry = data.ry ?? 0;
-       this.rz = data.rz ?? 0;
-
-       this.shape = data.shape ?? "Block";
-       this.material = data.material ?? null;
-       this.killbrick = data.killbrick ?? false;
-       this.CanCollide = data.CanCollide ?? false;
-       this.isSpawnLocation = data.isSpawnLocation ?? false;
-       this.IsClimbable = data.IsClimbable ?? false;
-       this.Siting = data.Siting ?? false;
-       this.Anchored = data.Anchored ?? false;
-
-       this.color = data.color ?? "#ffffff";
-       this.transparency = data.transparency ?? 0;
-
-        const color = this.color
-       
-        let geometry = new THREE.BoxGeometry(this.sx, this.sy, this.sz);
-        let mat = new THREE.MeshStandardMaterial({ color });
-
-        this.mesh = new THREE.Mesh(geometry, mat);
-        this.mesh.castShadow = true
-        this.mesh.receiveShadow = true
-    }
-   
-    addTo(targetScene) {
-        targetScene.add(this.mesh);
-    }
-}
 
 class Sound extends BasicClass {
     constructor(data) {
@@ -327,113 +248,6 @@ class Sound extends BasicClass {
             sound.setVolume(this.volume);
             sound.play();
         });
-    }
-}
-
-window.Part = Part
-window.Sound = Sound
-
-class CreatePart {
-    constructor({
-        x = 0, y = 0, z = 0,
-        sx = 1, sy = 1, sz = 1,
-        rx = 0, ry = 0, rz = 0,
-        color = "#ffffff",
-
-        material = null,
-
-        killbrick = false,
-        CanCollide = false,
-        isSpawnLocation = false,
-        Transparency = 1,
-        IsClimbable = false,
-        Siting = false,
-        Anchored = true
-    } = {}) {
-        this.killbrick = killbrick;
-        this.isSpawnLocation = isSpawnLocation;
-        this.CanCollide = CanCollide;
-        this.IsClimbable = IsClimbable;
-        this.Anchored = Anchored;
-        this.velocity = new THREE.Vector3();
-        this._grounded = false;
-
-        this.x = x
-        this.y = y
-        this.z = z
-        this.sx = sx
-        this.sy = sy
-        this.sz = sz
-        this.rx = rx
-        this.ry = ry
-        this.rz = rz
-
-        this.Siting = Siting
-
-        const texturePath = material && MATERIALS[material] ? MATERIALS[material] : null;
-
-        this.def = {
-            x, y, z, sx, sy, sz, rx, ry, rz, color, material,
-            killbrick, CanCollide, isSpawnLocation, IsClimbable, Anchored,
-            Transparency
-        };
-
-        const geomKey = `${sx}|${sy}|${sz}`;
-        let geometry = geometryCache.get(geomKey);
-        if (!geometry) {
-            geometry = new THREE.BoxGeometry(sx, sy, sz);
-            geometryCache.set(geomKey, geometry);
-        }
-        const TILE_SIZE = 2.5;
-        const repeatX = sx / TILE_SIZE;
-        const repeatZ = sz / TILE_SIZE;
-        const repeatY = sy / TILE_SIZE;
-
-        let mat;
-        if (texturePath) {
-            const topTex = getCachedTexture(texturePath, repeatX, repeatZ);
-            const topBottomMat = getCachedMaterial(`mat-tb|${color}|${texturePath}|${repeatX}|${repeatZ}`, () => new THREE.MeshStandardMaterial({ color, map: topTex }));
-
-           
-            const sideTexX = getCachedTexture(texturePath, repeatZ, repeatY);
-            const sideTexZ = getCachedTexture(texturePath, repeatX, repeatY);
-            const sideMatX = getCachedMaterial(`mat-sideX|${color}|${texturePath}|${repeatZ}|${repeatY}`, () => new THREE.MeshStandardMaterial({ color, map: sideTexX }));
-            const sideMatZ = getCachedMaterial(`mat-sideZ|${color}|${texturePath}|${repeatX}|${repeatY}`, () => new THREE.MeshStandardMaterial({ color, map: sideTexZ }));
-
-            mat = [sideMatX, sideMatX, topBottomMat, topBottomMat, sideMatZ, sideMatZ];
-        } else {
-            mat = getCachedMaterial(`plain|${color}`, () => new THREE.MeshStandardMaterial({ color }));
-        }
-
-        this.mesh = new THREE.Mesh(geometry, mat);
-        //this.mesh.transparent = true;
-        //this.mesh.opacity = Transparency;
-        this.mesh.position.set(x, y, z);
-        this.mesh.rotation.set(rx, ry, rz);
-        this.mesh.castShadow = true;
-        this.mesh.receiveShadow = true;
-
-        this.localOBB = new OBB(
-            new THREE.Vector3(0, 0, 0),
-            new THREE.Vector3(sx / 2, sy / 2, sz / 2)
-        );
-        this.obb = this.localOBB.clone();
-
-        this.boundingRadius = Math.sqrt((sx / 2) ** 2 + (sy / 2) ** 2 + (sz / 2) ** 2);
-
-        activeParts.push(this);
-        if (!this.Anchored) dynamicParts.push(this);
-        if (!this.CanCollide) collidableMeshes.push(this.mesh);
-    }
-
-    addTo(targetScene) {
-        targetScene.add(this.mesh);
-    }
-
-    updateHitbox() {
-        this.mesh.updateMatrixWorld(true);
-        this.obb.copy(this.localOBB);
-        this.obb.applyMatrix4(this.mesh.matrixWorld);
     }
 }
 
@@ -521,19 +335,34 @@ let modelReady = false;
 let pendingSpawn = null;
 let currentMapData = null;
 
+let mapLights = [];
+
 function clearMap() {
     activeParts.forEach(part => scene.remove(part.mesh));
     activeParts.length = 0;
     dynamicParts.length = 0;
     collidableMeshes.length = 0;
+
+    mapLights.forEach(light => scene.remove(light.light));
+    mapLights = [];
+
+    // Drop only the Parts we own -- leave any other UGC objects (e.g.
+    // Scripts) parented to Workspace alone.
+    Workspace.children = Workspace.children.filter(child => !(child instanceof Part));
 }
 
 function loadMap(mapData) {
     clearMap();
  
     (mapData.parts || []).forEach(partDef => {
-        const part = new CreatePart(partDef);
+        const part = new Part({ parent: "Workspace", ...partDef });
         part.addTo(scene);
+    });
+
+    (mapData.lights || []).forEach(lightDef => {
+        const light = new PointLight({ parent: "Workspace", ...lightDef });
+        light.addTo(scene);
+        mapLights.push(light);
     });
  
     currentMapData = mapData;
@@ -559,7 +388,8 @@ async function loadMapFromURL(url) {
 }
 
 window.loadMap = loadMap;
-window.CreatePart = CreatePart;
+window.Part = Part;
+window.Sound = Sound;
 window.THREE = THREE;
 window.scene = scene;
 window.spawn = spawn;
@@ -573,7 +403,12 @@ function serializeCurrentMap(name, author) {
         spawn: (modelReady && gltf.scene)
             ? { x: gltf.scene.position.x, y: gltf.scene.position.y, z: gltf.scene.position.z }
             : (currentMapData && currentMapData.spawn) || { x: 0, y: 0, z: 0.9 },
-        parts: activeParts.map(part => part.def)
+        parts: activeParts.map(part => part.def),
+        lights: mapLights.map(light => ({
+            name: light.name, parent: light.parent,
+            x: light.x, y: light.y, z: light.z,
+            intensity: light.intensity, color: light.color, CastShadow: light.CastShadow
+        }))
     };
 }
 
@@ -1463,6 +1298,26 @@ console.log("Loaded clips:", gltf.animations.map(a => a.name));
 
 window.isClimbing = isClimbing
 
+// Built fresh each frame and handed to every Script under GameScripts.
+// This -- not `window` -- is the intended way for UGC scripts to reach
+// into the live game (spawn parts, read/change health, etc).
+function buildScriptContext(time) {
+    return {
+        time,
+        dt,
+        Part, PointLight, Frame, Script, Place,
+        Workspace,
+        scene,
+        THREE,
+        get Health() { return Health; },
+        set Health(v) { Health = v; },
+        MaxHealth,
+        Paused,
+        player: gltf && gltf.scene ? gltf.scene : null,
+        findInstance: (name) => Instances.get(name) ?? null
+    };
+}
+
 function animate() {
     requestAnimationFrame(animate);
 
@@ -1494,6 +1349,8 @@ function animate() {
     fill.style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
 
     CheckHealth()
+
+    GameScripts.runAll(buildScriptContext(clock.getElapsedTime()), clock.getElapsedTime());
 
     if (gltf && gltf.scene) {
         if (sitCooldown > 0) sitCooldown -= dt;
