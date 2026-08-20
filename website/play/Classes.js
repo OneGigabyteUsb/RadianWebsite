@@ -410,7 +410,7 @@ export class Frame extends BasicClass {
   }
 }
 
-export class PointLight extends BasicClass {
+export class PointLight2 extends BasicClass {
     constructor(data = {}) {
         super(data);
 
@@ -427,8 +427,10 @@ export class PointLight extends BasicClass {
         this.color = data.color ?? "#ffffff";
 
         this.light = new THREE.PointLight(this.color, this.intensity, 100);
-        this.light.position.set(this.x, this.y, this.z);
-        this.light.castShadow = this.CastShadow;
+        this.light.position.x = this.parent.x + this.x ?? this.x;
+        this.light.position.y = this.parent.y + this.y ?? this.y;
+        this.light.position.z = this.parent.z + this.z ?? this.z;
+        this.light.castShadow = this.CastShadow ?? false;
 
         this._attachToParent();
         register(this);
