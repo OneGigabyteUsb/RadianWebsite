@@ -410,7 +410,7 @@ export class Frame extends BasicClass {
   }
 }
 
-export class PointLight2 extends BasicClass {
+export class PointLight extends BasicClass {
     constructor(data = {}) {
         super(data);
 
