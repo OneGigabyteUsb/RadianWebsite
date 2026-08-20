@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import * as THREE from 'https://esm.sh/three@0.174.0';
 import { OBB } from 'three/addons/math/OBB.js';
 
 export const Instances = new Map();
