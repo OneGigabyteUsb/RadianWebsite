@@ -426,7 +426,7 @@ export class PointLight extends BasicClass {
         this.intensity = data.intensity ?? 1;
         this.color = data.color ?? "#ffffff";
 
-        const parent = this.getParentInstance();
+        const parent = Instances.get(this.parent);
 
         this.light = new THREE.PointLight(this.color, this.intensity, 100);
         this.light.position.x = (this.x ?? 0) + (parent?.x ?? 0);
