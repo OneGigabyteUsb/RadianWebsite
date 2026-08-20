@@ -3,10 +3,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OBB } from "three/addons/math/OBB.js";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
-import {
-    BasicClass, Place, ServerScripts, Script, Part, Frame, PointLight,
-    Instances, activeParts, dynamicParts, collidableMeshes
-} from '/Classes.js';
+import { BasicClass, Place, ServerScripts, Script, Part, Frame, PointLight, Instances, activeParts, dynamicParts, collidableMeshes } from '/Classes.js';
 
 THREE.Cache.enabled = true;
 const scene = new THREE.Scene()
