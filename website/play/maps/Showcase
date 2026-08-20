@@ -193,9 +193,10 @@
     },
     {
       "name": "GlassAccent",
-      "x": 12,
-      "y": 0.25,
-      "z": -2,
+      "x": 0,
+      "y": 0,
+      "z": 0,
+      "parent": "GlassWall",
       "color": "#66aaff",
       "intensity": 24
     }
