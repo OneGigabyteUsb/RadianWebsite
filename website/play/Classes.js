@@ -163,14 +163,25 @@ export class Part extends BasicClass {
         this._grounded = false;
 
         this.def = {
-            name: this.name, parent: this.parent,
-            x: this.x, y: this.y, z: this.z,
-            sx: this.sx, sy: this.sy, sz: this.sz,
-            rx: this.rx, ry: this.ry, rz: this.rz,
-            color: this.color, material: this.material,
-            killbrick: this.killbrick, CanCollide: this.CanCollide,
-            isSpawnLocation: this.isSpawnLocation, IsClimbable: this.IsClimbable,
-            Siting: this.Siting, Anchored: this.Anchored,
+            name: this.name,
+            parent: this.parent,
+            x: this.x,
+            y: this.y,
+            z: this.z,
+            sx: this.sx,
+            sy: this.sy,
+            sz: this.sz,
+            rx: this.rx,
+            ry: this.ry,
+            rz: this.rz,
+            color: this.color,
+            material: this.material,
+            killbrick: this.killbrick,
+            CanCollide: this.CanCollide,
+            isSpawnLocation: this.isSpawnLocation,
+            IsClimbable: this.IsClimbable,
+            Siting: this.Siting,
+            Anchored: this.Anchored,
             Transparency: this.Transparency
         };
 
@@ -190,16 +201,27 @@ export class Part extends BasicClass {
         let mat;
         if (texturePath) {
             const topTex = getCachedTexture(texturePath, repeatX, repeatZ);
-            const topBottomMat = getCachedMaterial(`mat-tb|${this.color}|${texturePath}|${repeatX}|${repeatZ}`, () => new THREE.MeshStandardMaterial({ color: this.color, map: topTex }));
+            const topBottomMat = getCachedMaterial(`mat-tb|${this.color}|${texturePath}|${repeatX}|${repeatZ}`, () => new THREE.MeshStandardMaterial({
+                color: this.color,
+                map: topTex
+            }));
 
             const sideTexX = getCachedTexture(texturePath, repeatZ, repeatY);
             const sideTexZ = getCachedTexture(texturePath, repeatX, repeatY);
-            const sideMatX = getCachedMaterial(`mat-sideX|${this.color}|${texturePath}|${repeatZ}|${repeatY}`, () => new THREE.MeshStandardMaterial({ color: this.color, map: sideTexX }));
-            const sideMatZ = getCachedMaterial(`mat-sideZ|${this.color}|${texturePath}|${repeatX}|${repeatY}`, () => new THREE.MeshStandardMaterial({ color: this.color, map: sideTexZ }));
+            const sideMatX = getCachedMaterial(`mat-sideX|${this.color}|${texturePath}|${repeatZ}|${repeatY}`, () => new THREE.MeshStandardMaterial({
+                color: this.color,
+                map: sideTexX
+            }));
+            const sideMatZ = getCachedMaterial(`mat-sideZ|${this.color}|${texturePath}|${repeatX}|${repeatY}`, () => new THREE.MeshStandardMaterial({
+                color: this.color,
+                map: sideTexZ
+            }));
 
             mat = [sideMatX, sideMatX, topBottomMat, topBottomMat, sideMatZ, sideMatZ];
         } else {
-            mat = getCachedMaterial(`plain|${this.color}`, () => new THREE.MeshStandardMaterial({ color: this.color }));
+            mat = getCachedMaterial(`plain|${this.color}`, () => new THREE.MeshStandardMaterial({
+                color: this.color
+            }));
         }
 
         this.mesh = new THREE.Mesh(geometry, mat);
@@ -209,9 +231,18 @@ export class Part extends BasicClass {
         this.mesh.receiveShadow = true;
 
         if (this.Transparency < 1) {
-            this.mesh.material = Array.isArray(mat) ? mat.map(m => m.clone()) : mat.clone();
-            const mats = Array.isArray(this.mesh.material) ? this.mesh.material : [this.mesh.material];
-            mats.forEach(m => { m.transparent = true; m.opacity = this.Transparency; });
+            this.mesh.material = Array.isArray(mat) ?
+                mat.map(m => m.clone()) :
+                mat.clone();
+
+            const mats = Array.isArray(this.mesh.material) ?
+                this.mesh.material : [this.mesh.material];
+
+            mats.forEach(m => {
+                m.transparent = true;
+                m.opacity = this.Transparency;
+                m.depthWrite = false;
+            });
         }
 
         this.localOBB = new OBB(
