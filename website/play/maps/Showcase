@@ -1,0 +1,203 @@
+{
+  "name": "Showcase",
+  "author": "Radian",
+  "background": null,
+  "spawn": {
+    "x": 0,
+    "y": 1,
+    "z": 8
+  },
+  "parts": [
+    {
+      "name": "Ground",
+      "x": 0,
+      "y": -0.5,
+      "z": 0,
+      "sx": 70,
+      "sy": 1,
+      "sz": 70,
+      "color": "#5cb85c",
+      "material": "grass",
+      "CanCollide": false
+    },
+    {
+      "name": "SpawnPad",
+      "x": 0,
+      "y": 0.15,
+      "z": 8,
+      "sx": 5,
+      "sy": 0.3,
+      "sz": 5,
+      "color": "#888888",
+      "material": "stone",
+      "isSpawnLocation": true,
+      "CanCollide": false
+    },
+    {
+      "name": "SpawnPad2",
+      "x": 18,
+      "y": 0.15,
+      "z": -10,
+      "sx": 5,
+      "sy": 0.3,
+      "sz": 5,
+      "color": "#888888",
+      "material": "stone",
+      "isSpawnLocation": true,
+      "CanCollide": false
+    },
+    {
+      "name": "BrickStep1",
+      "x": -8,
+      "y": 0.5,
+      "z": 2,
+      "sx": 3,
+      "sy": 1,
+      "sz": 3,
+      "color": "#a0522d",
+      "material": "brick",
+      "CanCollide": false
+    },
+    {
+      "name": "BrickStep2",
+      "x": -8,
+      "y": 1.5,
+      "z": -1,
+      "sx": 3,
+      "sy": 1,
+      "sz": 3,
+      "color": "#a0522d",
+      "material": "brick",
+      "CanCollide": false
+    },
+    {
+      "name": "ConcreteLanding",
+      "x": -8,
+      "y": 2.5,
+      "z": -5,
+      "sx": 6,
+      "sy": 1,
+      "sz": 6,
+      "color": "#9a9a9a",
+      "material": "concrete",
+      "CanCollide": false
+    },
+    {
+      "name": "PebblePath",
+      "x": 4,
+      "y": 0.1,
+      "z": 4,
+      "sx": 4,
+      "sy": 0.2,
+      "sz": 12,
+      "color": "#b7a68e",
+      "material": "pebble",
+      "CanCollide": false
+    },
+    {
+      "name": "TiltedPlankRamp",
+      "x": 4,
+      "y": 1.4,
+      "z": -6,
+      "sx": 5,
+      "sy": 0.25,
+      "sz": 8,
+      "color": "#d2a384",
+      "material": "planks",
+      "rx": -0.35,
+      "ry": 0.15,
+      "rz": 0.08,
+      "CanCollide": false
+    },
+    {
+      "name": "GlassWall",
+      "x": 12,
+      "y": 2,
+      "z": -2,
+      "sx": 0.25,
+      "sy": 4,
+      "sz": 6,
+      "color": "#bfe3ff",
+      "material": "plastic",
+      "Transparency": 0.35,
+      "CanCollide": true
+    },
+    {
+      "name": "LavaPit",
+      "x": -2,
+      "y": 0,
+      "z": -12,
+      "sx": 8,
+      "sy": 0.5,
+      "sz": 6,
+      "color": "#ff3300",
+      "killbrick": true,
+      "CanCollide": false
+    },
+    {
+      "name": "ClimbLadder",
+      "x": 18,
+      "y": 3,
+      "z": -13,
+      "sx": 1,
+      "sy": 6,
+      "sz": 1,
+      "color": "#8a5a35",
+      "material": "wood",
+      "IsClimbable": true,
+      "CanCollide": false
+    },
+    {
+      "name": "SitBench",
+      "x": 8,
+      "y": 0.5,
+      "z": 6,
+      "sx": 2,
+      "sy": 1,
+      "sz": 2,
+      "color": "#304173",
+      "Siting": true,
+      "CanCollide": false
+    },
+    {
+      "name": "PushableCrate",
+      "x": 2,
+      "y": 1,
+      "z": 10,
+      "sx": 1.2,
+      "sy": 1.2,
+      "sz": 1.2,
+      "color": "#c49a7e",
+      "material": "wood",
+      "Anchored": false,
+      "CanCollide": true
+    }
+  ],
+  "lights": [
+    {
+      "name": "SpawnLight",
+      "x": 0,
+      "y": 4,
+      "z": 8,
+      "color": "#ffd9a0",
+      "intensity": 1.2,
+      "CastShadow": true
+    },
+    {
+      "name": "LavaGlow",
+      "x": -2,
+      "y": 1.5,
+      "z": -12,
+      "color": "#ff5522",
+      "intensity": 1.8
+    },
+    {
+      "name": "GlassAccent",
+      "x": 12,
+      "y": 3,
+      "z": -2,
+      "color": "#66aaff",
+      "intensity": 1
+    }
+  ]
+}
