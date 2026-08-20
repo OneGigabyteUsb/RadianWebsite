@@ -419,9 +419,9 @@ export class PointLight extends BasicClass {
 
         this.CastShadow = data.CastShadow ?? false;
 
-        this.x = parent.x + data.x ?? 0;
-        this.y = parent.x + data.y ?? 0;
-        this.z = parent.x + data.z ?? 0;
+        this.x = data.x ?? 0;
+        this.y = data.y ?? 0;
+        this.z = data.z ?? 0;
 
         this.intensity = data.intensity ?? 1;
         this.color = data.color ?? "#ffffff";
