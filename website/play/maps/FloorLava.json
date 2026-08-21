@@ -1,0 +1,39 @@
+{
+  "name": "Floor Is Lava",
+  "spawn": {
+    "x": 0,
+    "y": 3,
+    "z": 0
+  },
+  "parts": [
+    {
+      "name": "LavaFloor",
+      "x": 0,
+      "y": -0.5,
+      "z": 0,
+      "sx": 100,
+      "sy": 1,
+      "sz": 100,
+      "color": "#ff3300",
+      "killbrick": true,
+      "Anchored": true
+    },
+    {
+      "name": "Platform1",
+      "x": 0,
+      "y": 2,
+      "z": 0,
+      "sx": 5,
+      "sy": 1,
+      "sz": 5,
+      "color": "#8b5a2b",
+      "isSpawnLocation": true
+    }
+  ],
+  "scripts": [
+    {
+      "name": "LavaRiseScript",
+      "scriptString": "const lava = context.findInstance('LavaFloor'); if (lava) { const cycleSeconds = 8; const amplitude = 3; const baseY = -0.5; const phase = (Date.now()/1000 % cycleSeconds)/cycleSeconds; const wave = (Math.sin(phase*Math.PI*2 - Math.PI/2)+1)/2; lava.y = baseY + wave*amplitude; lava.mesh.position.y = lava.y; lava.updateHitbox(); }"
+    }
+  ]
+}
