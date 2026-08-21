@@ -783,7 +783,6 @@ multiplayerSocket.addEventListener('message', (event) => {
     const msg = JSON.parse(event.data);
     if (msg.type === 'state') updateOtherPlayers(msg.players);
     else if (msg.type === 'chat') appendChatMessage(msg.username, msg.text);
-    else if (msg.type === 'parts') updateServerParts(msg.parts);
 });
 
 function buildRemotePlayer(id) {
@@ -985,11 +984,12 @@ function updateFrustum(size) {
 GraficsSlider.addEventListener('input', function() {
     GraficsUpdate()
 });
-// Unanchored Part physics is now server-authoritative (see GameRoom.stepPartsPhysics
-// in the worker) -- the client no longer integrates gravity/friction for parts,
-// it just smoothly lerps each dynamic Part's mesh toward the latest position
-// the server broadcast (see updateServerParts()/interpolateServerParts() below).
-const PART_LERP_SPEED = 10; // same idea as REMOTE_LERP_SPEED for other players
+const partGravity = -0.03;
+const partTerminalVelocity = 3;
+const _partPushVec = new THREE.Vector3();
+const PART_PUSH_SHARE = 0.0;
+const PART_PUSH_SPEED = 0.04;
+const PART_FRICTION = 0.24;
 
 function checkPartCollisions() {
     syncPlayerHitbox();
@@ -1047,6 +1047,25 @@ function checkPartCollisions() {
 
         if (part.CanCollide) continue;
 
+        if (!part.Anchored && !isVertical) {
+            const pushToBlock = pushOverlap * PART_PUSH_SHARE;
+            const pushToPlayer = pushOverlap - pushToBlock;
+
+            _partPushVec.copy(hit.axis).multiplyScalar(-pushToBlock);
+            part.x += _partPushVec.x;
+            part.z += _partPushVec.z;
+            part.mesh.position.set(part.x, part.y, part.z);
+            part.updateHitbox();
+
+            part.velocity.x += -hit.axis.x * PART_PUSH_SPEED;
+            part.velocity.z += -hit.axis.z * PART_PUSH_SPEED;
+
+            _pushVec.copy(hit.axis).multiplyScalar(pushToPlayer);
+            gltf.scene.position.add(_pushVec);
+            syncPlayerHitbox();
+            continue;
+        }
+
         _pushVec.copy(hit.axis).multiplyScalar(pushOverlap);
         gltf.scene.position.add(_pushVec);
         syncPlayerHitbox();
@@ -1060,31 +1079,58 @@ function checkPartCollisions() {
     }
 }
 
-// Applied whenever a 'parts' message arrives from the server (see the
-// multiplayerSocket message listener above) -- stashes the server's latest
-// authoritative position on the matching Part instance so the next
-// interpolateServerParts() call can lerp toward it.
-function updateServerParts(parts) {
-    for (const name in parts) {
-        const part = Instances.get(name);
-        if (part instanceof Part && !part.Anchored) {
-            part._serverTarget = parts[name];
-        }
-    }
-}
-
-function interpolateServerParts(deltaSeconds) {
-    const t = Math.min(1, PART_LERP_SPEED * deltaSeconds);
+function stepDynamicParts(dt) {
     for (let i = 0; i < dynamicParts.length; i++) {
         const part = dynamicParts[i];
-        if (!part._serverTarget) continue;
+        const wasGrounded = !!part._grounded;
 
-        part.x += (part._serverTarget[0] - part.x) * t;
-        part.y += (part._serverTarget[1] - part.y) * t;
-        part.z += (part._serverTarget[2] - part.z) * t;
+        part.velocity.y += partGravity * dt;
+        part.velocity.y = Math.max(-partTerminalVelocity, Math.min(partTerminalVelocity, part.velocity.y));
+
+        if (wasGrounded) {
+            const friction = Math.max(0, 1 - PART_FRICTION * dt);
+            part.velocity.x *= friction;
+            part.velocity.z *= friction;
+            if (Math.abs(part.velocity.x) < 0.001) part.velocity.x = 0;
+            if (Math.abs(part.velocity.z) < 0.001) part.velocity.z = 0;
+        }
+
+        part.x += part.velocity.x * dt;
+        part.y += part.velocity.y * dt;
+        part.z += part.velocity.z * dt;
 
         part.mesh.position.set(part.x, part.y, part.z);
         part.updateHitbox();
+
+        part._grounded = false;
+
+        for (let j = 0; j < activeParts.length; j++) {
+            const other = activeParts[j];
+            if (other === part) continue;
+
+            const dx = other.x - part.x, dy = other.y - part.y, dz = other.z - part.z;
+            const reach = other.boundingRadius + part.boundingRadius;
+            if (dx * dx + dy * dy + dz * dz > reach * reach) continue;
+
+            other.updateHitbox();
+            const hit = resolveOBBOverlap(part.obb, other.obb);
+            if (!hit || other.CanCollide) continue;
+
+            _partPushVec.copy(hit.axis).multiplyScalar(hit.overlap);
+            part.x += _partPushVec.x;
+            part.y += _partPushVec.y;
+            part.z += _partPushVec.z;
+            part.mesh.position.set(part.x, part.y, part.z);
+            part.updateHitbox();
+
+            if (Math.abs(hit.axis.y) > 0.5) {
+                part.velocity.y = 0;
+                if (hit.axis.y > 0) part._grounded = true;
+            } else {
+                part.velocity.x = 0;
+                part.velocity.z = 0;
+            }
+        }
     }
 }
 
@@ -1415,7 +1461,7 @@ function animate() {
         }
 
         checkPartCollisions();
-        interpolateServerParts(delta);
+        stepDynamicParts(dt);
 
         target = playerHitboxMesh.position;
 
