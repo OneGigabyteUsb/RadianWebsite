@@ -1728,216 +1728,18 @@ export default {
 // connected player's live position/state in memory and rebroadcasts on
 // every message -- source of truth for a single match, not persisted.
 //
-// It's ALSO the physics authority for every unanchored Part in the map:
-// on first use it loads the map (same games.json -> game_path resolution
-// main.js's loadMapForCurrentGame() does client-side), keeps a simple
-// x/y/z + velocity record for each unanchored part, and steps gravity/
-// friction/collision on a fixed tick via the Alarms API (works even though
-// WebSocket Hibernation can evict this object between messages -- alarms
-// wake it back up). Ticks stop once the room is empty and resume the next
-// time someone connects.
-//
 // Wire protocol (must match main.js exactly):
 //   client -> server: { type: 'move', pos: [x,y,z], rot: [x,y,z,w], anim }
 //   client -> server: { type: 'chat', text }
 //   server -> client: { type: 'state', players: { [userId]: { pos, rot, anim } } }
 //   server -> client: { type: 'chat', username, text }
-//   server -> client: { type: 'parts', parts: { [partName]: [x, y, z] } }
-
-// Mirrors main.js's part-physics constants exactly. Both sides step
-// with dtEquiv = elapsedSeconds * 60, so the SAME constants (tuned for a
-// 60fps client frame) work unmodified here -- no unit conversion needed.
-const PART_TICK_MS = 50;
-const PART_GRAVITY = -0.03;
-const PART_TERMINAL_VELOCITY = 3;
-const PART_FRICTION = 0.24;
-const PLAYER_PART_PUSH_SPEED = 0.04;
-
-// Approximates main.js's player hitbox (BoxGeometry(1.3, 3, 0.6) translated
-// so the mesh's position is at the feet, box spans y:[0,3] above that).
-const PLAYER_HALF_EXTENTS = { x: 0.65, y: 1.5, z: 0.3 };
-const PLAYER_HALF_HEIGHT = 1.5;
-
-// Axis-aligned (rotation-ignoring) box overlap test -- a lightweight stand-in
-// for main.js's OBB-based resolveOBBOverlap(). Good enough for typical
-// unrotated crates/props; a Part with rx/ry/rz set won't collide precisely
-// server-side. Returns the axis (pointing from B toward A) and penetration
-// depth of least overlap, or null if the boxes aren't touching.
-function resolveAABBOverlap(centerA, halfA, centerB, halfB) {
-    const dx = centerA.x - centerB.x;
-    const dy = centerA.y - centerB.y;
-    const dz = centerA.z - centerB.z;
-
-    const overlapX = (halfA.x + halfB.x) - Math.abs(dx);
-    const overlapY = (halfA.y + halfB.y) - Math.abs(dy);
-    const overlapZ = (halfA.z + halfB.z) - Math.abs(dz);
-
-    if (overlapX <= 0 || overlapY <= 0 || overlapZ <= 0) return null;
-
-    if (overlapX <= overlapY && overlapX <= overlapZ) {
-        return { axis: { x: dx < 0 ? -1 : 1, y: 0, z: 0 }, overlap: overlapX };
-    } else if (overlapY <= overlapX && overlapY <= overlapZ) {
-        return { axis: { x: 0, y: dy < 0 ? -1 : 1, z: 0 }, overlap: overlapY };
-    } else {
-        return { axis: { x: 0, y: 0, z: dz < 0 ? -1 : 1 }, overlap: overlapZ };
-    }
-}
-
 export class GameRoom {
     constructor(state, env) {
         this.state = state;
         this.env = env;
-        this.gameId = null;
-        this.partsLoaded = false;
-        this.allParts = [];      // every part (static + dynamic), for collision lookups
-        this.dynamicParts = [];  // subset that actually gets simulated + broadcast
-        this.lastTickAt = null;
     }
 
-    // Resolves the same map file main.js would load for this game_id and
-    // seeds this.allParts/this.dynamicParts from its `parts` array. Safe to
-    // call repeatedly -- only does real work once per DO lifetime.
-    async loadPartsIfNeeded(originUrl) {
-        if (this.partsLoaded) return;
-        this.partsLoaded = true;
-
-        try {
-            let mapPath = 'maps/Demo.json';
-
-            if (this.gameId && this.gameId !== 'main') {
-                const gamesRes = await this.env.WEBSITE.fetch(new Request(new URL('/api/games.json', originUrl)));
-                if (gamesRes.ok) {
-                    const games = await gamesRes.json();
-                    const game = games.find(g => String(g.Id) === String(this.gameId));
-                    if (game) mapPath = game.game_path || `maps/${game.name}_${game.Id}.json`;
-                }
-            }
-
-            const mapRes = await this.env.WEBSITE.fetch(new Request(new URL('/' + mapPath.replace(/^\//, ''), originUrl)));
-            if (!mapRes.ok) throw new Error(`map fetch failed: ${mapRes.status}`);
-            const mapData = await mapRes.json();
-
-            this.allParts = (mapData.parts || []).map((def, i) => ({
-                name: def.name || `Part_${i}`,
-                x: def.x ?? 0, y: def.y ?? 0, z: def.z ?? 0,
-                sx: def.sx ?? 1, sy: def.sy ?? 1, sz: def.sz ?? 1,
-                vx: 0, vy: 0, vz: 0,
-                grounded: false,
-                Anchored: def.Anchored ?? true,
-                CanCollide: def.CanCollide ?? false
-            }));
-
-            this.dynamicParts = this.allParts.filter(p => !p.Anchored);
-        } catch (err) {
-            console.error('[GameRoom] could not load map for physics:', err);
-            this.allParts = [];
-            this.dynamicParts = [];
-        }
-    }
-
-    // Schedules the next physics tick if one isn't already pending. Called
-    // whenever a player connects; alarm() re-schedules itself as long as
-    // the room stays occupied.
-    async ensurePhysicsLoop() {
-        if (this.dynamicParts.length === 0) return;
-        const existing = await this.state.storage.getAlarm();
-        if (!existing) {
-            await this.state.storage.setAlarm(Date.now() + PART_TICK_MS);
-        }
-    }
-
-    stepPartsPhysics(realDtSeconds) {
-        const dt = realDtSeconds * 60; // matches main.js's `dt = delta * 60`
-
-        const players = [];
-        for (const socket of this.state.getWebSockets()) {
-            const info = socket.deserializeAttachment();
-            if (info && Array.isArray(info.pos)) players.push(info);
-        }
-
-        for (const part of this.dynamicParts) {
-            part.vy += PART_GRAVITY * dt;
-            part.vy = Math.max(-PART_TERMINAL_VELOCITY, Math.min(PART_TERMINAL_VELOCITY, part.vy));
-
-            if (part.grounded) {
-                const friction = Math.max(0, 1 - PART_FRICTION * dt);
-                part.vx *= friction;
-                part.vz *= friction;
-                if (Math.abs(part.vx) < 0.001) part.vx = 0;
-                if (Math.abs(part.vz) < 0.001) part.vz = 0;
-            }
-
-            part.x += part.vx * dt;
-            part.y += part.vy * dt;
-            part.z += part.vz * dt;
-            part.grounded = false;
-
-            const partHalf = { x: part.sx / 2, y: part.sy / 2, z: part.sz / 2 };
-
-            for (const other of this.allParts) {
-                if (other === part) continue;
-
-                const hit = resolveAABBOverlap(
-                    { x: part.x, y: part.y, z: part.z }, partHalf,
-                    { x: other.x, y: other.y, z: other.z }, { x: other.sx / 2, y: other.sy / 2, z: other.sz / 2 }
-                );
-                if (!hit || other.CanCollide) continue;
-
-                part.x += hit.axis.x * hit.overlap;
-                part.y += hit.axis.y * hit.overlap;
-                part.z += hit.axis.z * hit.overlap;
-
-                if (Math.abs(hit.axis.y) > 0.5) {
-                    part.vy = 0;
-                    if (hit.axis.y > 0) part.grounded = true;
-                } else {
-                    part.vx = 0;
-                    part.vz = 0;
-                }
-            }
-
-            // Lets players shove unanchored parts around -- the client sends
-            // its own position via 'move' regardless of this, so this is
-            // just the server reacting to where players already are.
-            for (const info of players) {
-                const hit = resolveAABBOverlap(
-                    { x: part.x, y: part.y, z: part.z }, partHalf,
-                    { x: info.pos[0], y: info.pos[1] + PLAYER_HALF_HEIGHT, z: info.pos[2] }, PLAYER_HALF_EXTENTS
-                );
-                if (!hit) continue;
-
-                part.x += hit.axis.x * hit.overlap;
-                part.y += hit.axis.y * hit.overlap;
-                part.z += hit.axis.z * hit.overlap;
-                part.vx += hit.axis.x * PLAYER_PART_PUSH_SPEED;
-                part.vz += hit.axis.z * PLAYER_PART_PUSH_SPEED;
-            }
-        }
-    }
-
-    broadcastParts() {
-        if (this.dynamicParts.length === 0) return;
-        const parts = {};
-        for (const part of this.dynamicParts) {
-            parts[part.name] = [part.x, part.y, part.z];
-        }
-        this.broadcast({ type: 'parts', parts });
-    }
-
-    async alarm() {
-        const now = Date.now();
-        const realDtSeconds = this.lastTickAt ? Math.min(0.25, (now - this.lastTickAt) / 1000) : PART_TICK_MS / 1000;
-        this.lastTickAt = now;
-
-        this.stepPartsPhysics(realDtSeconds);
-        this.broadcastParts();
-
-        if (this.state.getWebSockets().length > 0 && this.dynamicParts.length > 0) {
-            await this.state.storage.setAlarm(now + PART_TICK_MS);
-        }
-    }
-
-    async fetch(request) {
+        async fetch(request) {
         const upgradeHeader = request.headers.get("Upgrade");
 
         if (upgradeHeader !== "websocket") {
@@ -1951,11 +1753,6 @@ export class GameRoom {
         if (!userId) {
             return new Response("Missing user_id", { status: 400 });
         }
-
-        if (!this.gameId) {
-            this.gameId = url.searchParams.get("game_id") || "main";
-        }
-        await this.loadPartsIfNeeded(url);
 
         const { 0: client, 1: server } = new WebSocketPair();
 
@@ -1976,7 +1773,6 @@ export class GameRoom {
         });
 
         this.broadcastState();
-        await this.ensurePhysicsLoop();
 
         return new Response(null, { status: 101, webSocket: client });
     }
