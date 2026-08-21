@@ -196,7 +196,7 @@
       "x": 0,
       "y": 0,
       "z": 0,
-      "parent": GlassWall,
+      "parent": "GlassWall",
       "color": "#66aaff",
       "intensity": 24
     }
