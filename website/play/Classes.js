@@ -1,5 +1,7 @@
-import * as THREE from 'https://esm.sh/three@0.174.0';
-import { OBB } from 'https://esm.sh/three@0.174.0/addons/math/OBB.js';
+import * as THREE from 'three';
+import { OBB } from 'three/addons/math/OBB.js';
+
+//========INSTANCE REGISTRY========\\
 
 export const Instances = new Map();
 
@@ -11,6 +13,9 @@ function register(instance) {
     window[instance.name] = instance;
 }
 
+// Used as the default `name` for classes like Part/Frame/Script that don't
+// force a fixed name. Without this, every unnamed Part would default to
+// the literal name "Part" -- and registering it would overwrite
 const nameCounters = new Map();
 function uniqueName(prefix) {
     const n = (nameCounters.get(prefix) ?? 0) + 1;
@@ -18,6 +23,7 @@ function uniqueName(prefix) {
     return `${prefix}_${n}`;
 }
 
+//========CLASSES========\\
 export class BasicClass {
     constructor({
        name = "",
@@ -28,6 +34,7 @@ export class BasicClass {
        this.children = []
     }
 
+    // Call once name/parent are finalized at the end of a subclass
     _attachToParent() {
         const parentInstance = Instances.get(this.parent);
         if (parentInstance && Array.isArray(parentInstance.children)) {
@@ -50,8 +57,23 @@ export class BasicClass {
         }
     }
 
+    // Convenience for scripts: find a direct child by name.
     findChild(name) {
         return this.children.find(child => child.name === name) ?? null;
+    }
+
+    // Detaches from its parent's children list and clears the registry/
+    // window entry. For Part/PointLight, prefer removeFrom(scene) instead
+    destroy() {
+        const parentInstance = Instances.get(this.parent);
+        if (parentInstance && Array.isArray(parentInstance.children)) {
+            const idx = parentInstance.children.indexOf(this);
+            if (idx !== -1) parentInstance.children.splice(idx, 1);
+        }
+        if (Instances.get(this.name) === this) {
+            Instances.delete(this.name);
+            delete window[this.name];
+        }
     }
 }
 
@@ -59,7 +81,7 @@ export class Place extends BasicClass {
     constructor(data = {}) {
         super(data);
 
-       this.name = data.name ?? "Place";
+       this.name = data.name || "Place";
        this.parent = "UGC";
 
        register(this);
@@ -76,6 +98,7 @@ export class ServerScripts extends BasicClass {
        register(this);
     }
 
+    // Runs every Script currently parented under this container.
     runAll(context, time) {
         for (const child of this.children) {
             if (child instanceof Script) {
@@ -85,6 +108,7 @@ export class ServerScripts extends BasicClass {
     }
 }
 
+//========PART PHYSICS SUPPORT========\\
 export const MATERIALS = {
     plastic: "textures/Plastic.png",
     grass: "textures/Grass.png",
@@ -133,7 +157,7 @@ export class Part extends BasicClass {
     constructor(data = {}) {
         super(data);
 
-        this.name = data.name ?? uniqueName("Part");
+        this.name = data.name || uniqueName("Part");
         this.parent = data.parent ?? "Workspace";
 
         this.x = data.x ?? 0;
@@ -150,6 +174,8 @@ export class Part extends BasicClass {
 
         this.color = data.color ?? "#ffffff";
         this.material = data.material ?? null;
+        // Accept either casing -- the old Classes.js Part used `transparency`,
+        // the old CreatePart used `Transparency`. 1 = fully opaque.
         this.Transparency = data.Transparency ?? data.transparency ?? 1;
 
         this.killbrick = data.killbrick ?? false;
@@ -162,26 +188,17 @@ export class Part extends BasicClass {
         this.velocity = new THREE.Vector3();
         this._grounded = false;
 
+        // Serializable definition for map save/load (serializeCurrentMap in
+        // main.js reads part.def). Includes name/parent/Siting, which the
         this.def = {
-            name: this.name,
-            parent: this.parent,
-            x: this.x,
-            y: this.y,
-            z: this.z,
-            sx: this.sx,
-            sy: this.sy,
-            sz: this.sz,
-            rx: this.rx,
-            ry: this.ry,
-            rz: this.rz,
-            color: this.color,
-            material: this.material,
-            killbrick: this.killbrick,
-            CanCollide: this.CanCollide,
-            isSpawnLocation: this.isSpawnLocation,
-            IsClimbable: this.IsClimbable,
-            Siting: this.Siting,
-            Anchored: this.Anchored,
+            name: this.name, parent: this.parent,
+            x: this.x, y: this.y, z: this.z,
+            sx: this.sx, sy: this.sy, sz: this.sz,
+            rx: this.rx, ry: this.ry, rz: this.rz,
+            color: this.color, material: this.material,
+            killbrick: this.killbrick, CanCollide: this.CanCollide,
+            isSpawnLocation: this.isSpawnLocation, IsClimbable: this.IsClimbable,
+            Siting: this.Siting, Anchored: this.Anchored,
             Transparency: this.Transparency
         };
 
@@ -201,27 +218,16 @@ export class Part extends BasicClass {
         let mat;
         if (texturePath) {
             const topTex = getCachedTexture(texturePath, repeatX, repeatZ);
-            const topBottomMat = getCachedMaterial(`mat-tb|${this.color}|${texturePath}|${repeatX}|${repeatZ}`, () => new THREE.MeshStandardMaterial({
-                color: this.color,
-                map: topTex
-            }));
+            const topBottomMat = getCachedMaterial(`mat-tb|${this.color}|${texturePath}|${repeatX}|${repeatZ}`, () => new THREE.MeshStandardMaterial({ color: this.color, map: topTex }));
 
             const sideTexX = getCachedTexture(texturePath, repeatZ, repeatY);
             const sideTexZ = getCachedTexture(texturePath, repeatX, repeatY);
-            const sideMatX = getCachedMaterial(`mat-sideX|${this.color}|${texturePath}|${repeatZ}|${repeatY}`, () => new THREE.MeshStandardMaterial({
-                color: this.color,
-                map: sideTexX
-            }));
-            const sideMatZ = getCachedMaterial(`mat-sideZ|${this.color}|${texturePath}|${repeatX}|${repeatY}`, () => new THREE.MeshStandardMaterial({
-                color: this.color,
-                map: sideTexZ
-            }));
+            const sideMatX = getCachedMaterial(`mat-sideX|${this.color}|${texturePath}|${repeatZ}|${repeatY}`, () => new THREE.MeshStandardMaterial({ color: this.color, map: sideTexX }));
+            const sideMatZ = getCachedMaterial(`mat-sideZ|${this.color}|${texturePath}|${repeatX}|${repeatY}`, () => new THREE.MeshStandardMaterial({ color: this.color, map: sideTexZ }));
 
             mat = [sideMatX, sideMatX, topBottomMat, topBottomMat, sideMatZ, sideMatZ];
         } else {
-            mat = getCachedMaterial(`plain|${this.color}`, () => new THREE.MeshStandardMaterial({
-                color: this.color
-            }));
+            mat = getCachedMaterial(`plain|${this.color}`, () => new THREE.MeshStandardMaterial({ color: this.color }));
         }
 
         this.mesh = new THREE.Mesh(geometry, mat);
@@ -231,18 +237,11 @@ export class Part extends BasicClass {
         this.mesh.receiveShadow = true;
 
         if (this.Transparency < 1) {
-            this.mesh.material = Array.isArray(mat) ?
-                mat.map(m => m.clone()) :
-                mat.clone();
-
-            const mats = Array.isArray(this.mesh.material) ?
-                this.mesh.material : [this.mesh.material];
-
-            mats.forEach(m => {
-                m.transparent = true;
-                m.opacity = this.Transparency;
-                m.depthWrite = false;
-            });
+            // Materials are cache-shared across every Part with the same
+            // color/material, so clone before touching opacity -- otherwise
+            this.mesh.material = Array.isArray(mat) ? mat.map(m => m.clone()) : mat.clone();
+            const mats = Array.isArray(this.mesh.material) ? this.mesh.material : [this.mesh.material];
+            mats.forEach(m => { m.transparent = true; m.opacity = this.Transparency; });
         }
 
         this.localOBB = new OBB(
@@ -296,7 +295,8 @@ export class Script extends BasicClass {
         super(data);
 
         const scriptString = data.scriptString ?? "console.log('Hello World!')";
-        this.name = data.name ?? uniqueName("Script");
+        this.scriptString = scriptString;
+        this.name = data.name || uniqueName("Script");
         this.parent = data.parent ?? "ServerScripts";
 
         try {
@@ -310,6 +310,7 @@ export class Script extends BasicClass {
         register(this);
     }
 
+    // NOTE ON SANDBOXING: `new Function` compiles the script with access to
     run(context = this, time = 0) {
         if (this.executeScript) {
             try {
@@ -324,7 +325,7 @@ export class Script extends BasicClass {
 export class Frame extends BasicClass {
   constructor(data = {}) {
     super(data);
-    this.name = data.name ?? uniqueName("Frame");
+    this.name = data.name || uniqueName("Frame");
 
     this.color = data.color ?? "#ffffff"
     this.corner = data.corner ?? 0
@@ -414,8 +415,10 @@ export class PointLight extends BasicClass {
     constructor(data = {}) {
         super(data);
 
-        this.name = data.name ?? uniqueName("PointLight");
-        this.parent = data.parent ?? "Workspace";
+        this.name = data.name || uniqueName("PointLight");
+        // `parent` should name a Part this light clips to (like a Roblox
+        // attachment) -- x/y/z below are then a LOCAL offset from that
+        this.parent = data.parent ?? "";
 
         this.CastShadow = data.CastShadow ?? false;
 
@@ -426,18 +429,28 @@ export class PointLight extends BasicClass {
         this.intensity = data.intensity ?? 1;
         this.color = data.color ?? "#ffffff";
 
-        const parent = Instances.get(this.parent);
-
         this.light = new THREE.PointLight(this.color, this.intensity, 100);
-        this.light.position.x = (this.x ?? 0) + (parent?.x ?? 0);
-        this.light.position.x = (this.y ?? 0) + (parent?.y ?? 0);
-        this.light.position.z = (this.x ?? 0) + (parent?.z ?? 0);
-        this.light.castShadow = this.CastShadow ?? false;
+        this.light.castShadow = this.CastShadow;
 
         this._attachToParent();
         register(this);
+
+        this.updatePosition();
     }
 
+    // Re-clips the light to its parent Part's current position + local
+    // offset.
+    updatePosition() {
+        const part = Instances.get(this.parent);
+        if (part && typeof part.x === "number") {
+            this.light.position.set(part.x + this.x, part.y + this.y, part.z + this.z);
+        } else {
+            this.light.position.set(this.x, this.y, this.z);
+        }
+    }
+
+    // Matches Part's addTo/removeFrom convention instead of reaching for a
+    // global `scene` variable that this file never actually had access to.
     addTo(targetScene) {
         targetScene.add(this.light);
     }
