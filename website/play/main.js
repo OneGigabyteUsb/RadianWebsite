@@ -1533,6 +1533,22 @@ function animate() {
                 velocityZ *= scale;
             }
 
+            // Hard cap -- this is the actual fix for flying off the map.
+            // The accel math above only limits how much speed gets added
+            // IN THE CURRENT WISH DIRECTION. If you spin fast while holding
+            // a movement key, every frame's wish direction is slightly
+            // different, so it keeps allowing more speed in the new
+            // direction without ever removing the old sideways momentum --
+            // the total velocity vector just keeps growing frame over
+            // frame. This clamps total speed to maxSpeed no matter what,
+            // regardless of how that speed got built up.
+            const finalSpeed = Math.hypot(velocityX, velocityZ);
+            if (finalSpeed > maxSpeed) {
+                const clampScale = maxSpeed / finalSpeed;
+                velocityX *= clampScale;
+                velocityZ *= clampScale;
+            }
+
             gltf.scene.position.x += velocityX * dt;
             gltf.scene.position.z += velocityZ * dt;
         } else {
