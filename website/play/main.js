@@ -209,36 +209,23 @@ let WalkSpeed = -0.7;
 let spawn = new THREE.Vector3();
 
 //=====Movement feel (accel/friction model, coyote time, jump buffer)=====\\
-// Horizontal velocity is now tracked frame-to-frame instead of snapping
-// straight to max speed. This is the single biggest thing that makes
-// movement feel less "generic" -- there's a tiny ramp-up on ground and a
-// slide-to-stop, and noticeably less control while airborne.
 let velocityX = 0;
 let velocityZ = 0;
-const groundAccel = 2;   // how fast you reach top speed on ground (per dt-unit)
-const groundFriction = 0.75; // how fast you decelerate/stop on ground (0-1, higher = snappier stop)
-const airAccel = 0.22;     // much less authority in the air -- this is what makes
-                            // ground movement feel "grounded" instead of like ice skating everywhere
-const airFriction = 0.02;  // almost no air friction -- keeps your momentum through a jump
+const groundAccel = 2;
+const groundFriction = 0.75;
+const airAccel = 0.22;
+                            
+const airFriction = 0.02;
 
-// Coyote time: you can still jump for a brief window after walking off a
-// ledge. Jump buffer: pressing jump slightly before landing still counts.
-// Both of these alone fix most "why didn't my jump work" moments.
 let coyoteTimer = 999;
 let jumpBufferTimer = 999;
-const COYOTE_TIME = 9;      // ~0.15s at 60fps (dt is ~1 per frame at 60fps)
-const JUMP_BUFFER_TIME = 9; // ~0.15s at 60fps
+const COYOTE_TIME = 9;
+const JUMP_BUFFER_TIME = 9;
 
 // Sprint: held key, only takes effect on ground.
 let isSprinting = false;
 const sprintMultiplier = 1.6; // top speed while sprinting = groundSpeed * this
 
-// Parkour-style air speed: instead of always capping air speed to the same
-// number as ground speed, the cap is whichever is bigger -- your normal air
-// cap, or however fast you're ALREADY going. This is what carries a
-// sprint-jump further than a standing jump, and lets a fast slide/fall keep
-// its speed through the air instead of getting yanked back down to walk
-// speed the instant you leave the ground.
 const airMaxSpeedMultiplier = 0.35; // baseline air cap vs ground cap when NOT already fast
 
 function SetSpawn(x,y,z) {
@@ -254,9 +241,8 @@ camera.rotation.order = 'YXZ';
 let theta = 0;
 let phi = 0;
 let distance = 8;
-let sensitivity = 0.0032; // was 0.007 -- that was turning the camera roughly
-                           // 2x faster than most third-person games use per
-                           // pixel of mouse movement
+let sensitivity = 0.0032;
+
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 const FIRST_PERSON_DISTANCE = 1.2;
