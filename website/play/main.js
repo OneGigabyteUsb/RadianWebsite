@@ -203,7 +203,7 @@ function appendChatMessage(username, text) {
 
 //=====Player Stuff=====\\
 let JumpPower = 0.54;
-let WalkSpeed = -0.28;
+let WalkSpeed = -0.48;
 let spawn = new THREE.Vector3();
 
 //=====Movement feel (accel/friction model, coyote time, jump buffer)=====\\
