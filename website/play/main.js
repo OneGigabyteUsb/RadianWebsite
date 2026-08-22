@@ -497,7 +497,7 @@ window.loadMapFromURL = loadMapFromURL;
 window.clearMap = clearMap;
 
 async function loadMapForCurrentGame() {
-    if (GAME_ID === 'main') {
+    if (GAME_ID === '1') {
         return loadMapFromURL("maps/Demo.json");
     }
 
