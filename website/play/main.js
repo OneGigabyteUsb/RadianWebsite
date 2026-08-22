@@ -194,6 +194,27 @@ let JumpPower = 0.54;
 let WalkSpeed = -0.18;
 let spawn = new THREE.Vector3();
 
+//=====Movement feel (accel/friction model, coyote time, jump buffer)=====\\
+// Horizontal velocity is now tracked frame-to-frame instead of snapping
+// straight to max speed. This is the single biggest thing that makes
+// movement feel less "generic" -- there's a tiny ramp-up on ground and a
+// slide-to-stop, and noticeably less control while airborne.
+let velocityX = 0;
+let velocityZ = 0;
+const groundAccel = 0.85;   // how fast you reach top speed on ground (per dt-unit)
+const groundFriction = 0.75; // how fast you decelerate/stop on ground (0-1, higher = snappier stop)
+const airAccel = 0.22;     // much less authority in the air -- this is what makes
+                            // ground movement feel "grounded" instead of like ice skating everywhere
+const airFriction = 0.02;  // almost no air friction -- keeps your momentum through a jump
+
+// Coyote time: you can still jump for a brief window after walking off a
+// ledge. Jump buffer: pressing jump slightly before landing still counts.
+// Both of these alone fix most "why didn't my jump work" moments.
+let coyoteTimer = 999;
+let jumpBufferTimer = 999;
+const COYOTE_TIME = 9;      // ~0.15s at 60fps (dt is ~1 per frame at 60fps)
+const JUMP_BUFFER_TIME = 9; // ~0.15s at 60fps
+
 function SetSpawn(x,y,z) {
    spawn = new THREE.Vector3(x,y,z);
 }
@@ -1212,9 +1233,12 @@ document.addEventListener('keydown', (event) => {
       velocityY = JumpPower;
       // climbLaunchVelocity.copy(climbNormal).multiplyScalar(CLIMB_LAUNCH_SPEED);
       globalSound.play();
-    } else if (velocityY === 0) {
-      velocityY = JumpPower; 
-      globalSound.play();
+    } else {
+      // Don't jump here directly -- just remember the press. animate()
+      // resolves it against coyote time / grounded state every frame,
+      // which is what lets a slightly-early or slightly-late press
+      // still register.
+      jumpBufferTimer = 0;
     }
   }
 });
@@ -1388,6 +1412,21 @@ function animate() {
         gltf.scene.position.y += velocityY * dt;
         checkPartCollisions();
 
+        // --- Coyote time + jump buffer resolution ---
+        // Runs every frame: if isGrounded just became true, coyoteTimer
+        // resets to 0. Both timers count UP, so "< TIME" means "still
+        // within the window."
+        coyoteTimer += dt;
+        jumpBufferTimer += dt;
+        if (isGrounded) coyoteTimer = 0;
+
+        if (jumpBufferTimer < JUMP_BUFFER_TIME && coyoteTimer < COYOTE_TIME && !isClimbing && !Siting) {
+            velocityY = JumpPower;
+            globalSound.play();
+            jumpBufferTimer = 999; // consume it so it can't double-fire
+            coyoteTimer = 999;
+        }
+
         moveDirection.set(0, 0, 0);
 
         forwardX = Math.sin(theta);
@@ -1411,11 +1450,50 @@ function animate() {
              gltf.scene.quaternion.slerp(targetQuaternion, 0.15);
         }
 
-        if (moveDirection.lengthSq() > 0.0001) {
-            moveDirection.normalize();
-            if (!isClimbing) {
-                gltf.scene.position.addScaledVector(moveDirection, WalkSpeed + 0.0001) * dt;
+        if (moveDirection.lengthSq() > 0.0001) moveDirection.normalize();
+
+        if (!isClimbing) {
+            // --- Accelerate/decelerate instead of snapping to max speed ---
+            // WalkSpeed is negative (and still respected here -- e.g. death
+            // sets it to 0 in CheckHealth(), which now naturally means
+            // "can't build up speed," and friction coasts you to a stop
+            // instead of an abrupt halt).
+            const grounded = isGrounded;
+            const accel = grounded ? groundAccel : airAccel;
+            const friction = grounded ? groundFriction : airFriction;
+            const maxSpeed = Math.abs(WalkSpeed);
+
+            // moveDirection*WalkSpeed was the old effective direction
+            // (WalkSpeed is negative), so wish = -moveDirection at
+            // maxSpeed magnitude keeps movement pointing the same way
+            // it always has.
+            const wishX = -moveDirection.x;
+            const wishZ = -moveDirection.z;
+
+            const currentSpeedInWish = velocityX * wishX + velocityZ * wishZ;
+            const addSpeed = maxSpeed - currentSpeedInWish;
+
+            if (addSpeed > 0) {
+                const accelAmount = Math.min(accel * dt * maxSpeed, addSpeed);
+                velocityX += wishX * accelAmount;
+                velocityZ += wishZ * accelAmount;
             }
+
+            // Friction: always bleeds some speed on ground (so you actually
+            // stop), barely touches it in the air (so jumps keep momentum).
+            const speed = Math.hypot(velocityX, velocityZ);
+            if (speed > 0.0001) {
+                const drop = speed * friction * dt;
+                const scale = Math.max(0, speed - drop) / speed;
+                velocityX *= scale;
+                velocityZ *= scale;
+            }
+
+            gltf.scene.position.x += velocityX * dt;
+            gltf.scene.position.z += velocityZ * dt;
+        } else {
+            velocityX = 0;
+            velocityZ = 0;
         }
 
         if (climbLaunchVelocity.lengthSq() > 0.0001) {
