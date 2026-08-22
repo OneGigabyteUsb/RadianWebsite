@@ -1234,7 +1234,7 @@ window.addEventListener('wheel', (event) => {
 
 window.addEventListener('contextmenu', (e) => e.preventDefault());
 
-const keys = { KeyW: false, KeyA: false, KeyS: false, KeyD: false, ControlLeft: false };
+const keys = { KeyW: false, KeyA: false, KeyS: false, KeyD: false, ControlLeft: false, ShiftLeft: false };
 window.addEventListener('keydown', (e) => { if (e.code in keys) keys[e.code] = true; });
 window.addEventListener('keyup', (e) => { if (e.code in keys) keys[e.code] = false; });
 
@@ -1301,7 +1301,7 @@ document.addEventListener('keydown', (event) => {
 });
 
 document.addEventListener('keydown', (event) => {
-  if (event.shiftKey) {
+  if (event.ctrlKey) {
      if (Siftlock === true) {
          Siftlock = false
      } else {
@@ -1468,7 +1468,7 @@ function animate() {
         // Sprint only actually does anything while grounded and moving --
         // holding it in the air or standing still is harmless but has no
         // effect, since air speed is governed by momentum instead (below).
-        isSprinting = keys.ControlLeft && Paused === false && Siting === false && moveDirection.lengthSq() > 0.0001;
+        isSprinting = keys.ShiftLeft && Paused === false && Siting === false && moveDirection.lengthSq() > 0.0001;
 
         if (Siftlock && Siting === false) {
             lockQuaternion.setFromAxisAngle(UP_AXIS, theta);
