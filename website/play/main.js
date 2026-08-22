@@ -237,7 +237,7 @@ const sprintMultiplier = 1.6; // top speed while sprinting = groundSpeed * this
 // sprint-jump further than a standing jump, and lets a fast slide/fall keep
 // its speed through the air instead of getting yanked back down to walk
 // speed the instant you leave the ground.
-const airMaxSpeedMultiplier = 0.4; // baseline air cap vs ground cap when NOT already fast
+const airMaxSpeedMultiplier = 0.35; // baseline air cap vs ground cap when NOT already fast
 
 function SetSpawn(x,y,z) {
    spawn = new THREE.Vector3(x,y,z);
