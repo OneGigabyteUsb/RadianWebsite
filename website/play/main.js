@@ -237,7 +237,7 @@ const sprintMultiplier = 1.6; // top speed while sprinting = groundSpeed * this
 // sprint-jump further than a standing jump, and lets a fast slide/fall keep
 // its speed through the air instead of getting yanked back down to walk
 // speed the instant you leave the ground.
-const airMaxSpeedMultiplier = 0.8; // baseline air cap vs ground cap when NOT already fast
+const airMaxSpeedMultiplier = 0.5; // baseline air cap vs ground cap when NOT already fast
 
 function SetSpawn(x,y,z) {
    spawn = new THREE.Vector3(x,y,z);
@@ -1194,7 +1194,7 @@ function CheckHealth() {
            gltf.scene.rotation.z = 0;
            ItemHeld = false
            Health = 100;
-           WalkSpeed = -0.18;
+           WalkSpeed = -0.28;
        }, 200);
     }
 }
@@ -1498,11 +1498,6 @@ function animate() {
             if (grounded) {
                 maxSpeed = groundSpeed;
             } else {
-                // Momentum cap: whichever is bigger, a baseline air speed or
-                // however fast you're already moving. A running/sprinting
-                // jump carries that speed into the air and lets you keep
-                // pushing a little further; a slow walk off a ledge doesn't
-                // suddenly get fast just because you're airborne.
                 const currentSpeed = Math.hypot(velocityX, velocityZ);
                 maxSpeed = Math.max(groundSpeed * airMaxSpeedMultiplier, currentSpeed);
             }
