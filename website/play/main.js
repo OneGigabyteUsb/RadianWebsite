@@ -215,6 +215,18 @@ let jumpBufferTimer = 999;
 const COYOTE_TIME = 9;      // ~0.15s at 60fps (dt is ~1 per frame at 60fps)
 const JUMP_BUFFER_TIME = 9; // ~0.15s at 60fps
 
+// Sprint: held key, only takes effect on ground.
+let isSprinting = false;
+const sprintMultiplier = 1.6; // top speed while sprinting = groundSpeed * this
+
+// Parkour-style air speed: instead of always capping air speed to the same
+// number as ground speed, the cap is whichever is bigger -- your normal air
+// cap, or however fast you're ALREADY going. This is what carries a
+// sprint-jump further than a standing jump, and lets a fast slide/fall keep
+// its speed through the air instead of getting yanked back down to walk
+// speed the instant you leave the ground.
+const airMaxSpeedMultiplier = 1.15; // baseline air cap vs ground cap when NOT already fast
+
 function SetSpawn(x,y,z) {
    spawn = new THREE.Vector3(x,y,z);
 }
@@ -1208,7 +1220,7 @@ window.addEventListener('wheel', (event) => {
 
 window.addEventListener('contextmenu', (e) => e.preventDefault());
 
-const keys = { KeyW: false, KeyA: false, KeyS: false, KeyD: false };
+const keys = { KeyW: false, KeyA: false, KeyS: false, KeyD: false, ControlLeft: false };
 window.addEventListener('keydown', (e) => { if (e.code in keys) keys[e.code] = true; });
 window.addEventListener('keyup', (e) => { if (e.code in keys) keys[e.code] = false; });
 
@@ -1439,6 +1451,11 @@ function animate() {
         if (keys.KeyA && Paused === false && Siting === false) { moveDirection.x += rightX;   moveDirection.z += rightZ; }
         if (keys.KeyD && Paused === false && Siting === false) { moveDirection.x -= rightX;   moveDirection.z -= rightZ; }
 
+        // Sprint only actually does anything while grounded and moving --
+        // holding it in the air or standing still is harmless but has no
+        // effect, since air speed is governed by momentum instead (below).
+        isSprinting = keys.ControlLeft && Paused === false && Siting === false && moveDirection.lengthSq() > 0.0001;
+
         if (Siftlock && Siting === false) {
             lockQuaternion.setFromAxisAngle(UP_AXIS, theta);
             gltf.scene.quaternion.slerp(lockQuaternion, 0.15);
@@ -1461,7 +1478,20 @@ function animate() {
             const grounded = isGrounded;
             const accel = grounded ? groundAccel : airAccel;
             const friction = grounded ? groundFriction : airFriction;
-            const maxSpeed = Math.abs(WalkSpeed);
+            const groundSpeed = Math.abs(WalkSpeed) * (isSprinting ? sprintMultiplier : 1);
+
+            let maxSpeed;
+            if (grounded) {
+                maxSpeed = groundSpeed;
+            } else {
+                // Momentum cap: whichever is bigger, a baseline air speed or
+                // however fast you're already moving. A running/sprinting
+                // jump carries that speed into the air and lets you keep
+                // pushing a little further; a slow walk off a ledge doesn't
+                // suddenly get fast just because you're airborne.
+                const currentSpeed = Math.hypot(velocityX, velocityZ);
+                maxSpeed = Math.max(groundSpeed * airMaxSpeedMultiplier, currentSpeed);
+            }
 
             // moveDirection*WalkSpeed was the old effective direction
             // (WalkSpeed is negative), so wish = -moveDirection at
