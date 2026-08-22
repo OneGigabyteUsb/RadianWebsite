@@ -82,6 +82,18 @@ const UP_AXIS = new THREE.Vector3(0, 1, 0);
 const heightOffset = 2.7;
 let targetRotationY;
 
+// Turning the character to face movement direction used to slerp by a flat
+// 0.15 every single frame, with no dt scaling -- so it ran 2.4x faster in
+// real time on a 144Hz display than on 60Hz, which is why spinning the
+// character (not the camera) could feel way too fast. This converts a
+// "per-frame-at-60fps" feel into a real, frame-rate-independent turn rate:
+// at dt=1 (60fps) it behaves identically to the old 0.15, but scales
+// correctly at any other refresh rate.
+const ROTATION_SMOOTHING = 0.15;
+function frameIndependentLerp(factor, dt) {
+    return 1 - Math.pow(1 - factor, dt);
+}
+
 let walkAnim;
 let idleAnim;
 
@@ -240,7 +252,9 @@ camera.rotation.order = 'YXZ';
 let theta = 0;
 let phi = 0;
 let distance = 8;
-const sensitivity = 0.007;
+let sensitivity = 0.0032; // was 0.007 -- that was turning the camera roughly
+                           // 2x faster than most third-person games use per
+                           // pixel of mouse movement
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 const FIRST_PERSON_DISTANCE = 1.2;
@@ -1458,13 +1472,13 @@ function animate() {
 
         if (Siftlock && Siting === false) {
             lockQuaternion.setFromAxisAngle(UP_AXIS, theta);
-            gltf.scene.quaternion.slerp(lockQuaternion, 0.15);
+            gltf.scene.quaternion.slerp(lockQuaternion, frameIndependentLerp(ROTATION_SMOOTHING, dt));
         }
 
         if (moveDirection.lengthSq() > 0.0001 && !Siftlock && !isClimbing) {
              targetRotationY = Math.atan2(moveDirection.x, moveDirection.z);
              targetQuaternion.setFromAxisAngle(UP_AXIS, targetRotationY);
-             gltf.scene.quaternion.slerp(targetQuaternion, 0.15);
+             gltf.scene.quaternion.slerp(targetQuaternion, frameIndependentLerp(ROTATION_SMOOTHING, dt));
         }
 
         if (moveDirection.lengthSq() > 0.0001) moveDirection.normalize();
