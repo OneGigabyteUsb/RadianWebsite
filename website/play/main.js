@@ -504,7 +504,7 @@ async function loadMapForCurrentGame() {
         if (!res.ok) throw new Error(`games.json fetch failed: ${res.status}`);
         const games = await res.json();
 
-        const game = games.find(g => String(g.) === String(GAME_));
+        const game = games.find(g => String(g.) === String(GAME_);
         if (!game) throw new Error(`No game with  ${GAME_} in the catalog`);
 
         const mapPath = game.game_path || `maps/${game.name}.json`;
