@@ -112,6 +112,7 @@ export class ServerScripts extends BasicClass {
 export const MATERIALS = {
     plastic: "textures/Plastic.png",
     grass: "textures/Grass.png",
+    sand: "textures/Sand.png",
     wood: "textures/Wood.png",
     planks: "textures/Planks.png",
     stone: "textures/Stone.png",
