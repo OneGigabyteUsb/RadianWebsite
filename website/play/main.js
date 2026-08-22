@@ -203,7 +203,7 @@ function appendChatMessage(username, text) {
 
 //=====Player Stuff=====\\
 let JumpPower = 0.54;
-let WalkSpeed = -1;
+let WalkSpeed = -0.8;
 let spawn = new THREE.Vector3();
 
 //=====Movement feel (accel/friction model, coyote time, jump buffer)=====\\
@@ -1194,7 +1194,7 @@ function CheckHealth() {
            gltf.scene.rotation.z = 0;
            ItemHeld = false
            Health = 100;
-           WalkSpeed = -0.28;
+           WalkSpeed = -0.8;
        }, 200);
     }
 }
