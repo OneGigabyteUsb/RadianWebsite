@@ -213,8 +213,8 @@ let spawn = new THREE.Vector3();
 // slide-to-stop, and noticeably less control while airborne.
 let velocityX = 0;
 let velocityZ = 0;
-const groundAccel = 0.85;   // how fast you reach top speed on ground (per dt-unit)
-const groundFriction = 0.75; // how fast you decelerate/stop on ground (0-1, higher = snappier stop)
+const groundAccel = 1;   // how fast you reach top speed on ground (per dt-unit)
+const groundFriction = 0.25; // how fast you decelerate/stop on ground (0-1, higher = snappier stop)
 const airAccel = 0.22;     // much less authority in the air -- this is what makes
                             // ground movement feel "grounded" instead of like ice skating everywhere
 const airFriction = 0.02;  // almost no air friction -- keeps your momentum through a jump
@@ -237,7 +237,7 @@ const sprintMultiplier = 1.6; // top speed while sprinting = groundSpeed * this
 // sprint-jump further than a standing jump, and lets a fast slide/fall keep
 // its speed through the air instead of getting yanked back down to walk
 // speed the instant you leave the ground.
-const airMaxSpeedMultiplier = 0.6; // baseline air cap vs ground cap when NOT already fast
+const airMaxSpeedMultiplier = 0.8; // baseline air cap vs ground cap when NOT already fast
 
 function SetSpawn(x,y,z) {
    spawn = new THREE.Vector3(x,y,z);
