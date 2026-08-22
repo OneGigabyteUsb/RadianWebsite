@@ -5,7 +5,7 @@ import { OBB } from "three/addons/math/OBB.js";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import {
     BasicClass, Place, ServerScripts, Script, Part, Frame, PointLight,
-    Instances, activeParts, dynamicParts, collidableMeshes
+    Instances, activeParts, dynamicParts, collableMeshes
 } from './Classes.js';
 
 THREE.Cache.enabled = true;
@@ -20,15 +20,15 @@ window.Workspace = Workspace;
 window.GameScripts = GameScripts;
 
 //=====ServerPath=====\\
-function getServerIdFromPath() {
+function getServerFromPath() {
     const parts = window.location.pathname.split('/').filter(Boolean);
     if (parts.length >= 2 && parts[0] === 'play') return parts[1];
     return null;
 }
-function getServerIdFromQuery() {
-    return new URLSearchParams(window.location.search).get('id');
+function getServerFromQuery() {
+    return new URLSearchParams(window.location.search).get('');
 }
-const GAME_ID = getServerIdFromPath() || getServerIdFromQuery() || document.body.dataset.gameId || 'main';
+const GAME_ = getServerFromPath() || getServerFromQuery() || document.body.dataset.game || 'main';
 
 //=====Variables=====\\
 let velocityY = 0;
@@ -87,7 +87,7 @@ let targetRotationY;
 // real time on a 144Hz display than on 60Hz, which is why spinning the
 // character (not the camera) could feel way too fast. This converts a
 // "per-frame-at-60fps" feel into a real, frame-rate-independent turn rate:
-// at dt=1 (60fps) it behaves identically to the old 0.15, but scales
+// at dt=1 (60fps) it behaves entically to the old 0.15, but scales
 // correctly at any other refresh rate.
 const ROTATION_SMOOTHING = 0.15;
 function frameIndependentLerp(factor, dt) {
@@ -95,7 +95,7 @@ function frameIndependentLerp(factor, dt) {
 }
 
 let walkAnim;
-let idleAnim;
+let leAnim;
 
 let forwardX;
 let forwardZ;
@@ -103,22 +103,22 @@ let rightX;
 let rightZ;
 
 //=====Html Elements=====\\
-const menuButton = document.getElementById('menuButton');
-const chatButton = document.getElementById('chatButton');
-const emoteButton = document.getElementById('emoteButton');
-const loadingScreen = document.getElementById('load');
+const menuButton = document.getElementBy('menuButton');
+const chatButton = document.getElementBy('chatButton');
+const emoteButton = document.getElementBy('emoteButton');
+const loadingScreen = document.getElementBy('load');
 
-const centerMenu = document.getElementById('centerMenu');
-const resumeButton = document.getElementById('resumeButton');
-const resetButton = document.getElementById('resetButton');
-const leaveButton = document.getElementById('leaveButton');
-const fill = document.getElementById('health-fill');
-const GraficsSlider = document.getElementById('volume');
+const centerMenu = document.getElementBy('centerMenu');
+const resumeButton = document.getElementBy('resumeButton');
+const resetButton = document.getElementBy('resetButton');
+const leaveButton = document.getElementBy('leaveButton');
+const fill = document.getElementBy('health-fill');
+const GraficsSler = document.getElementBy('volume');
 
 menuButton.addEventListener('click', function (event) {
    Paused = true;
 	event.stopPropagation();
-	centerMenu.classList.remove('hidden');
+	centerMenu.classList.remove('hden');
 });
 
 centerMenu.addEventListener('click', function (event) {
@@ -127,12 +127,12 @@ centerMenu.addEventListener('click', function (event) {
 
 resumeButton.addEventListener('click', function () {
    Paused = false;
-	centerMenu.classList.add('hidden');
+	centerMenu.classList.add('hden');
 });
 resetButton.addEventListener('click', function () {
 	Health = 0
    Paused = false;
-	centerMenu.classList.add('hidden');
+	centerMenu.classList.add('hden');
 });
 
 leaveButton.addEventListener('click', function () {
@@ -140,24 +140,24 @@ leaveButton.addEventListener('click', function () {
 });
 
 document.addEventListener('click', function () {
-	if (!centerMenu.classList.contains('hidden')) {
+	if (!centerMenu.classList.contains('hden')) {
       Paused = false;
-		centerMenu.classList.add('hidden');
+		centerMenu.classList.add('hden');
 	}
-	if (!chatMenu.classList.contains('hidden')) {
-		chatMenu.classList.add('hidden');
+	if (!chatMenu.classList.contains('hden')) {
+		chatMenu.classList.add('hden');
 	}
 });
 
-const chatMenu = document.getElementById('chatMenu');
+const chatMenu = document.getElementBy('chatMenu');
 const chatLog = chatMenu.querySelector('.chat-log');
-const chatInput = document.getElementById('chatInput');
-const sendChatButton = document.getElementById('sendChatButton');
+const chatInput = document.getElementBy('chatInput');
+const sendChatButton = document.getElementBy('sendChatButton');
 
 chatButton.addEventListener('click', function (event) {
 	event.stopPropagation();
-	chatMenu.classList.toggle('hidden');
-	if (!chatMenu.classList.contains('hidden')) chatInput.focus();
+	chatMenu.classList.toggle('hden');
+	if (!chatMenu.classList.contains('hden')) chatInput.focus();
 });
 
 chatMenu.addEventListener('click', function (event) {
@@ -210,7 +210,7 @@ let spawn = new THREE.Vector3();
 // Horizontal velocity is now tracked frame-to-frame instead of snapping
 // straight to max speed. This is the single biggest thing that makes
 // movement feel less "generic" -- there's a tiny ramp-up on ground and a
-// slide-to-stop, and noticeably less control while airborne.
+// sle-to-stop, and noticeably less control while airborne.
 let velocityX = 0;
 let velocityZ = 0;
 const groundAccel = 2;   // how fast you reach top speed on ground (per dt-unit)
@@ -221,7 +221,7 @@ const airFriction = 0.02;  // almost no air friction -- keeps your momentum thro
 
 // Coyote time: you can still jump for a brief window after walking off a
 // ledge. Jump buffer: pressing jump slightly before landing still counts.
-// Both of these alone fix most "why didn't my jump work" moments.
+// Both of these alone fix most "why dn't my jump work" moments.
 let coyoteTimer = 999;
 let jumpBufferTimer = 999;
 const COYOTE_TIME = 9;      // ~0.15s at 60fps (dt is ~1 per frame at 60fps)
@@ -234,7 +234,7 @@ const sprintMultiplier = 1.6; // top speed while sprinting = groundSpeed * this
 // Parkour-style air speed: instead of always capping air speed to the same
 // number as ground speed, the cap is whichever is bigger -- your normal air
 // cap, or however fast you're ALREADY going. This is what carries a
-// sprint-jump further than a standing jump, and lets a fast slide/fall keep
+// sprint-jump further than a standing jump, and lets a fast sle/fall keep
 // its speed through the air instead of getting yanked back down to walk
 // speed the instant you leave the ground.
 const airMaxSpeedMultiplier = 0.35; // baseline air cap vs ground cap when NOT already fast
@@ -243,10 +243,10 @@ function SetSpawn(x,y,z) {
    spawn = new THREE.Vector3(x,y,z);
 }
 
-const healthBar = document.getElementById("health-bar");
-const title = document.getElementById("title");
+const healthBar = document.getElementBy("health-bar");
+const title = document.getElementBy("title");
 
-const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 )
+const camera = new THREE.PerspectiveCamera( 75, window.innerWth / window.innerHeight, 0.1, 1000 )
 camera.rotation.order = 'YXZ';
 
 let theta = 0;
@@ -376,7 +376,7 @@ const renderer = new THREE.WebGLRenderer({ antialias: true })
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFShadowMap; //PCFShadowMap;
-renderer.setSize(window.innerWidth, window.innerHeight)
+renderer.setSize(window.innerWth, window.innerHeight)
 document.body.appendChild(renderer.domElement)
 
 scene.environment = null;
@@ -392,7 +392,7 @@ function clearMap() {
     activeParts.forEach(part => scene.remove(part.mesh));
     activeParts.length = 0;
     dynamicParts.length = 0;
-    collidableMeshes.length = 0;
+    collableMeshes.length = 0;
 
     mapLights.forEach(light => scene.remove(light.light));
     mapLights = [];
@@ -495,7 +495,7 @@ window.loadMapFromURL = loadMapFromURL;
 window.clearMap = clearMap;
 
 async function loadMapForCurrentGame() {
-    if (GAME_ID === 'main') {
+    if (GAME_ === 'main') {
         return loadMapFromURL("maps/Demo.json");
     }
 
@@ -504,10 +504,10 @@ async function loadMapForCurrentGame() {
         if (!res.ok) throw new Error(`games.json fetch failed: ${res.status}`);
         const games = await res.json();
 
-        const game = games.find(g => String(g.Id) === String(GAME_ID));
-        if (!game) throw new Error(`No game with id ${GAME_ID} in the catalog`);
+        const game = games.find(g => String(g.) === String(GAME_));
+        if (!game) throw new Error(`No game with  ${GAME_} in the catalog`);
 
-        const mapPath = game.game_path || `maps/${game.name}_${game.Id}.json`;
+        const mapPath = game.game_path || `maps/${game.name}.json`;
         return await loadMapFromURL(mapPath);
     } catch (err) {
         console.warn('[map] could not load map for this game, falling back to the demo map:', err);
@@ -655,8 +655,8 @@ const HAT_BONE_Y_OFFSET = 0.18;
 async function equipHat(root, avatar) {
     if (!avatar || !avatar.accessories) return;
     const items = await itemsCatalogPromise;
-    const equippedIds = new Set(avatar.accessories.ids);
-    const hatItem = items.find(item => item.type === "Hat" && equippedIds.has(item.Id));
+    const equippeds = new Set(avatar.accessories.s);
+    const hatItem = items.find(item => item.type === "Hat" && equippeds.has(item.));
 
     // Remove whatever hat this root was previously wearing before adding
     // the new one -- keeps re-equip/unequip clean instead of stacking.
@@ -672,7 +672,7 @@ async function equipHat(root, avatar) {
         const hatGltf = await loader.loadAsync(hatItem.model);
         hat = hatGltf.scene;
     } catch (err) {
-        console.warn(`[avatar] could not load hat model for item ${hatItem.Id}`, err);
+        console.warn(`[avatar] could not load hat model for item ${hatItem.}`, err);
         return;
     }
 
@@ -687,7 +687,7 @@ async function equipHat(root, avatar) {
                 obj.material.needsUpdate = true;
             });
         } catch (err) {
-            console.warn(`[avatar] could not load hat texture for item ${hatItem.Id}`, err);
+            console.warn(`[avatar] could not load hat texture for item ${hatItem.}`, err);
         }
     }
 
@@ -728,8 +728,8 @@ async function equipShirt(root, avatar) {
     }
 
     const items = await itemsCatalogPromise;
-    const equippedIds = new Set(avatar.accessories.ids);
-    const shirtItem = items.find(item => item.type === "T-shirt" && equippedIds.has(item.Id));
+    const equippeds = new Set(avatar.accessories.s);
+    const shirtItem = items.find(item => item.type === "T-shirt" && equippeds.has(item.));
 
     if (!shirtItem) {
         shirtMesh.visible = false;
@@ -749,7 +749,7 @@ async function equipShirt(root, avatar) {
             shirtMesh.material.map = tex;
             shirtMesh.material.needsUpdate = true;
         } catch (err) {
-            console.warn(`[avatar] could not load shirt texture for item ${shirtItem.Id}`, err);
+            console.warn(`[avatar] could not load shirt texture for item ${shirtItem.}`, err);
             const tex = await sharedTextureLoader.loadAsync("textures/Plastic.png");
             tex.colorSpace = THREE.SRGBColorSpace;
             tex.flipY = false;
@@ -780,7 +780,7 @@ if (gltf.animations && gltf.animations.length > 0) {
         if (e.action === animationsMap['point']) {
             lockedAnimation = false;
             currentState = "";
-            fadeToAnimation('Idle');
+            fadeToAnimation('le');
         }
      });
 
@@ -792,8 +792,8 @@ if (gltf.animations && gltf.animations.length > 0) {
         animationsMap[clip.name.toLowerCase()] = action;
     });
 
-    if (animationsMap['idle']) {
-        currentAction = animationsMap['idle'];
+    if (animationsMap['le']) {
+        currentAction = animationsMap['le'];
         currentAction.setEffectiveWeight(1);
     }
 }
@@ -813,15 +813,15 @@ fetch('/api/me/avatar', { credentials: 'include' })
     })
     .catch(() => console.warn('[avatar] could not load your avatar colors'));
 
-let myUserId = null;
+let myUser = null;
 fetch('/api/me', { credentials: 'include' })
     .then(r => r.json())
-    .then(me => { myUserId = me.id; })
+    .then(me => { myUser = me.; })
     .catch(() => console.warn('[multiplayer] could not fetch /api/me -- are you logged in?'));
 
 const wsProtocol = location.protocol === "https:" ? "wss:" : "ws:";
-const multiplayerSocket = new WebSocket(`${wsProtocol}//${location.host}/ws?game_id=${encodeURIComponent(GAME_ID)}`);
-const otherPlayers = {}; // user_id (string) -> remote player record, see buildRemotePlayer()
+const multiplayerSocket = new WebSocket(`${wsProtocol}//${location.host}/ws?game_=${encodeURIComponent(GAME_)}`);
+const otherPlayers = {}; // user_ (string) -> remote player record, see buildRemotePlayer()
 
 multiplayerSocket.addEventListener('open', () => console.log('[multiplayer] connected'));
 multiplayerSocket.addEventListener('close', (e) => console.log('[multiplayer] disconnected', e.code, e.reason));
@@ -832,7 +832,7 @@ multiplayerSocket.addEventListener('message', (event) => {
     else if (msg.type === 'chat') appendChatMessage(msg.username, msg.text);
 });
 
-function buildRemotePlayer(id) {
+function buildRemotePlayer() {
     const root = SkeletonUtils.clone(gltf.scene);
     root.traverse((obj) => {
         if (obj.isMesh) {
@@ -842,14 +842,14 @@ function buildRemotePlayer(id) {
     });
     scene.add(root);
 	
-    fetch(`/api/${id}/avatar`, { credentials: 'include' })
+    fetch(`/api/${}/avatar`, { credentials: 'include' })
         .then(r => r.json())
         .then(avatar => {
             applyAvatarColors(root, avatar.colors);
             equipHat(root, avatar);
             equipShirt(root, avatar);
         })
-        .catch(() => console.warn(`[avatar] could not load avatar colors for player ${id}`));
+        .catch(() => console.warn(`[avatar] could not load avatar colors for player ${}`));
 
     const mixer = new THREE.AnimationMixer(root);
     const animMap = {};
@@ -861,7 +861,7 @@ function buildRemotePlayer(id) {
         animMap[clip.name.toLowerCase()] = action;
     });
 
-    let currentAction = animMap['idle'] || null;
+    let currentAction = animMap['le'] || null;
     if (currentAction) currentAction.setEffectiveWeight(1);
 
     const player = {
@@ -875,7 +875,7 @@ function buildRemotePlayer(id) {
 
     mixer.addEventListener('finished', (e) => {
         if (e.action === animMap['point']) {
-            setRemoteAnimation(player, 'Idle');
+            setRemoteAnimation(player, 'le');
         }
     });
 
@@ -909,28 +909,28 @@ function setRemoteAnimation(player, animName) {
 }
 
 function updateOtherPlayers(players) {
-    const seenIds = new Set();
+    const seens = new Set();
 
-    for (const id in players) {
-        if (myUserId !== null && id === String(myUserId)) continue; // skip yourself
-        seenIds.add(id);
+    for (const  in players) {
+        if (myUser !== null &&  === String(myUser)) continue; // skip yourself
+        seens.add();
 
-        const data = players[id];
-        if (!otherPlayers[id]) {
-            otherPlayers[id] = buildRemotePlayer(id);
+        const data = players[];
+        if (!otherPlayers[]) {
+            otherPlayers[] = buildRemotePlayer();
         }
 
-        const p = otherPlayers[id];
+        const p = otherPlayers[];
         p.targetPos = data.pos;
         p.targetRot = data.rot;
         if (data.anim) setRemoteAnimation(p, data.anim);
     }
 
     // Remove players who disconnected
-    for (const id in otherPlayers) {
-        if (!seenIds.has(id)) {
-            scene.remove(otherPlayers[id].root);
-            delete otherPlayers[id];
+    for (const  in otherPlayers) {
+        if (!seens.has()) {
+            scene.remove(otherPlayers[].root);
+            delete otherPlayers[];
         }
     }
 }
@@ -939,8 +939,8 @@ const REMOTE_LERP_SPEED = 10; // higher = snappier, lower = smoother but laggier
 
 function interpolateOtherPlayers(deltaSeconds) {
     const t = Math.min(1, REMOTE_LERP_SPEED * deltaSeconds);
-    for (const id in otherPlayers) {
-        const p = otherPlayers[id];
+    for (const  in otherPlayers) {
+        const p = otherPlayers[];
         p.root.position.lerp(
             new THREE.Vector3(p.targetPos[0], p.targetPos[1], p.targetPos[2]),
             t
@@ -966,7 +966,7 @@ function sendMyPosition(elapsedSeconds) {
         type: 'move',
         pos: [gltf.scene.position.x, gltf.scene.position.y, gltf.scene.position.z],
         rot: [gltf.scene.quaternion.x, gltf.scene.quaternion.y, gltf.scene.quaternion.z, gltf.scene.quaternion.w],
-        anim: currentState || 'idle',
+        anim: currentState || 'le',
     }));
 }
 
@@ -996,19 +996,19 @@ function syncPlayerHitbox() {
 }
 
 function GraficsUpdate() {
-   if (GraficsSlider.value === "1") {
+   if (GraficsSler.value === "1") {
        sun.shadow.mapSize.set(0, 0);
        updateFrustum(0);
-   } else if (GraficsSlider.value === "2") {
+   } else if (GraficsSler.value === "2") {
        sun.shadow.mapSize.set(2048, 2048);
        updateFrustum(30);
-   } else if (GraficsSlider.value === "3") {
+   } else if (GraficsSler.value === "3") {
        sun.shadow.mapSize.set(2048, 2048);
        updateFrustum(35);
-   } else if (GraficsSlider.value === "4") {
+   } else if (GraficsSler.value === "4") {
        sun.shadow.mapSize.set(2048, 2048);
        updateFrustum(40);
-   } else if (GraficsSlider.value === "5") {
+   } else if (GraficsSler.value === "5") {
        sun.shadow.mapSize.set(2048, 2048);
        updateFrustum(65);
    }
@@ -1028,7 +1028,7 @@ function updateFrustum(size) {
     sun.shadow.camera.bottom = -size;
 }
 
-GraficsSlider.addEventListener('input', function() {
+GraficsSler.addEventListener('input', function() {
     GraficsUpdate()
 });
 const partGravity = -0.03;
@@ -1092,7 +1092,7 @@ function checkPartCollisions() {
             pushOverlap = Math.max(0, hit.overlap - CLIMB_STICK);
         }
 
-        if (part.CanCollide) continue;
+        if (part.CanColle) continue;
 
         if (!part.Anchored && !isVertical) {
             const pushToBlock = pushOverlap * PART_PUSH_SHARE;
@@ -1161,7 +1161,7 @@ function stepDynamicParts(dt) {
 
             other.updateHitbox();
             const hit = resolveOBBOverlap(part.obb, other.obb);
-            if (!hit || other.CanCollide) continue;
+            if (!hit || other.CanColle) continue;
 
             _partPushVec.copy(hit.axis).multiplyScalar(hit.overlap);
             part.x += _partPushVec.x;
@@ -1288,14 +1288,14 @@ document.addEventListener('keydown', (event) => {
 
 document.addEventListener('keydown', (event) => {
   if (event.code === "Escape") {
-     centerMenu.classList.remove('hidden');
+     centerMenu.classList.remove('hden');
      Paused = true;
   }
 });
 
 document.addEventListener('keydown', (event) => {
   if (event.code === "Period") {
-     centerMenu.classList.remove('hidden');
+     centerMenu.classList.remove('hden');
      Paused = true;
   }
 });
@@ -1345,9 +1345,9 @@ function fadeToAnimation(nextAnimationName) {
 window.fadeToAnimation = fadeToAnimation
 
 window.addEventListener('resize', () => {
-   camera.aspect = window.innerWidth / window.innerHeight;
+   camera.aspect = window.innerWth / window.innerHeight;
    camera.updateProjectionMatrix();
-   renderer.setSize(window.innerWidth, window.innerHeight);
+   renderer.setSize(window.innerWth, window.innerHeight);
 });
 
 window.gltf = gltf;
@@ -1401,10 +1401,10 @@ function animate() {
     }
     ratio = Health / MaxHealth
     percentage = ratio * 100
-    fill.style.width = percentage + "%";
+    fill.style.wth = percentage + "%";
 
     setTimeout(() => {
-        loadingScreen.classList.add('hidden');
+        loadingScreen.classList.add('hden');
     }, 1350);
 
     r = Math.floor((1.5 - ratio) * 255); -3
@@ -1533,7 +1533,7 @@ function animate() {
             // IN THE CURRENT WISH DIRECTION. If you spin fast while holding
             // a movement key, every frame's wish direction is slightly
             // different, so it keeps allowing more speed in the new
-            // direction without ever removing the old sideways momentum --
+            // direction without ever removing the old seways momentum --
             // the total velocity vector just keeps growing frame over
             // frame. This clamps total speed to maxSpeed no matter what,
             // regardless of how that speed got built up.
@@ -1579,10 +1579,10 @@ function animate() {
                 currentState = walkAnim;
             }
         } else {
-            idleAnim = ItemHeld ? 'itemheld-idle' : "idle";
-            if (currentState !== idleAnim) {
-                fadeToAnimation(ItemHeld ? 'ItemHeld-Idle' : 'Idle');
-                currentState = idleAnim;
+            leAnim = ItemHeld ? 'itemheld-le' : "le";
+            if (currentState !== leAnim) {
+                fadeToAnimation(ItemHeld ? 'ItemHeld-le' : 'le');
+                currentState = leAnim;
             }
         }
 
@@ -1607,7 +1607,7 @@ function animate() {
         cameraRaycaster.set(cameraPivot, cameraDir);
         cameraRaycaster.near = 0;
         cameraRaycaster.far = distance;
-        const cameraHits = cameraRaycaster.intersectObjects(collidableMeshes, false);
+        const cameraHits = cameraRaycaster.intersectObjects(collableMeshes, false);
         const effectiveDistance = cameraHits.length > 0
             ? Math.max(FIRST_PERSON_DISTANCE, cameraHits[0].distance - CAMERA_COLLISION_BUFFER)
             : distance;
