@@ -1414,7 +1414,7 @@ function animate() {
         if (moveDirection.lengthSq() > 0.0001) {
             moveDirection.normalize();
             if (!isClimbing) {
-                gltf.scene.position.addScaledVector(moveDirection, WalkSpeed + 0.0001);
+                gltf.scene.position.addScaledVector(moveDirection, WalkSpeed + 0.0001) * dt;
             }
         }
 
