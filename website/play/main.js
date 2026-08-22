@@ -203,7 +203,7 @@ function appendChatMessage(username, text) {
 
 //=====Player Stuff=====\\
 let JumpPower = 0.54;
-let WalkSpeed = -0.8;
+let WalkSpeed = -0.7;
 let spawn = new THREE.Vector3();
 
 //=====Movement feel (accel/friction model, coyote time, jump buffer)=====\\
@@ -237,7 +237,7 @@ const sprintMultiplier = 1.6; // top speed while sprinting = groundSpeed * this
 // sprint-jump further than a standing jump, and lets a fast slide/fall keep
 // its speed through the air instead of getting yanked back down to walk
 // speed the instant you leave the ground.
-const airMaxSpeedMultiplier = 0.5; // baseline air cap vs ground cap when NOT already fast
+const airMaxSpeedMultiplier = 0.4; // baseline air cap vs ground cap when NOT already fast
 
 function SetSpawn(x,y,z) {
    spawn = new THREE.Vector3(x,y,z);
@@ -1194,7 +1194,7 @@ function CheckHealth() {
            gltf.scene.rotation.z = 0;
            ItemHeld = false
            Health = 100;
-           WalkSpeed = -0.8;
+           WalkSpeed = -0.7;
        }, 200);
     }
 }
