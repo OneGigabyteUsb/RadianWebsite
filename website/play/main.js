@@ -1080,9 +1080,9 @@ function checkPartCollisions() {
             pushOverlap = Math.max(0, hit.overlap - CLIMB_STICK);
         }
 
-        if (part.CanCollide) continue;
+        if (!part.CanCollide) continue;
 
-        if (!part.Anchored && !isVertical) {
+        if (!part.Anchored && !isVertical && part.CanCollide) {
             const pushToBlock = pushOverlap * PART_PUSH_SHARE;
             const pushToPlayer = pushOverlap - pushToBlock;
 
