@@ -180,14 +180,22 @@ const bannedWords = [
     "faggot", "retard", "nigger", "nigga", "asshole", "cock", "dick"
 ];
 
+// Allows separator "noise" (spaces, underscores, dashes, dots) between
+// letters, so "f_u_c_k" / "f u c k" still get caught, not just "fuck".
+function buildBannedWordPattern(word) {
+	const letters = word.split('').map(c => c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+	const gap = '[\\s_\\-.]*';
+	const core = letters.join(gap);
+	const suffix = `${gap}(?:s|es|ed|ing|er|ers)?`;
+	return new RegExp(`(?<![a-zA-Z0-9])${core}${suffix}(?![a-zA-Z0-9])`, 'gi');
+}
+
 function filterMessage(text) {
 	if (bannedWords.length === 0) return text;
 	let filtered = text;
 	for (const word of bannedWords) {
-		// Escape regex special characters
-		const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-		const pattern = new RegExp(`\\b${escaped}\\b`, 'gi');
-		filtered = filtered.replace(pattern, (match) => '#'.repeat(match.length));
+		const pattern = buildBannedWordPattern(word);
+		filtered = filtered.replace(pattern, (match) => '*'.repeat(match.length));
 	}
 	return filtered;
 }
@@ -506,7 +514,7 @@ async function loadMapForCurrentGame() {
         const game = games.find(g => String(g.Id) === String(GAME_ID));
         if (!game) throw new Error(`No game with id ${GAME_ID} in the catalog`);
 
-        const mapPath = game.game_path || `maps/${game.name}.json`;
+        const mapPath = game.game_path || `maps/${game.name}_${game.Id}.json`;
         return await loadMapFromURL(mapPath);
     } catch (err) {
         console.warn('[map] could not load map for this game, falling back to the demo map:', err);
@@ -1610,7 +1618,7 @@ function animate() {
         }
 
         if (Siting === true) {
-           camera.position.y = target.y + heightOffset + effectiveDistance * Math.sin(phi);
+           camera.position.y = target.y + heightOffset + effectiveDistance *s Math.sin(phi);
         }
         camera.lookAt(target.x, target.y + heightOffset, target.z);
     }
