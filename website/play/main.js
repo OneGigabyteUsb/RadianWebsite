@@ -12,8 +12,7 @@ THREE.Cache.enabled = true;
 const scene = new THREE.Scene()
 
 //=====UGC Object Hierarchy=====\\
-// Root container every Part parents to by default (mirrors Roblox's
-// "Workspace"), and the container Scripts live under and get run from.
+// Default parent for Parts, like Roblox's Workspace.
 const Workspace = new Place({ name: "Workspace" });
 const GameScripts = new ServerScripts({});
 window.Workspace = Workspace;
@@ -28,9 +27,7 @@ function getServerIdFromPath() {
 function getServerIdFromQuery() {
     return new URLSearchParams(window.location.search).get('id');
 }
-const GAME_ID = getServerIdFromQuery();
-
-console.log(GAME_ID)
+const GAME_ID = getServerIdFromPath() || getServerIdFromQuery() || document.body.dataset.gameId || 'main';
 
 //=====Variables=====\\
 let velocityY = 0;
@@ -84,13 +81,7 @@ const UP_AXIS = new THREE.Vector3(0, 1, 0);
 const heightOffset = 2.7;
 let targetRotationY;
 
-// Turning the character to face movement direction used to slerp by a flat
-// 0.15 every single frame, with no dt scaling -- so it ran 2.4x faster in
-// real time on a 144Hz display than on 60Hz, which is why spinning the
-// character (not the camera) could feel way too fast. This converts a
-// "per-frame-at-60fps" feel into a real, frame-rate-independent turn rate:
-// at dt=1 (60fps) it behaves identically to the old 0.15, but scales
-// correctly at any other refresh rate.
+// Makes character turning speed the same on any refresh rate.
 const ROTATION_SMOOTHING = 0.15;
 function frameIndependentLerp(factor, dt) {
     return 1 - Math.pow(1 - factor, dt);
@@ -183,8 +174,26 @@ emoteButton.addEventListener('click', function (event) {
 
 
 //=====Chat Messages=====\\
+// Add your own words below (lowercase, whole-word match).
+const bannedWords = [
+    "fuck", "shit", "bitch", "bastard", "cunt", "piss", "slut", "whore",
+    "faggot", "retard", "nigger", "nigga", "asshole", "cock", "dick"
+];
+
+function filterMessage(text) {
+	if (bannedWords.length === 0) return text;
+	let filtered = text;
+	for (const word of bannedWords) {
+		// Escape regex special characters
+		const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+		const pattern = new RegExp(`\\b${escaped}\\b`, 'gi');
+		filtered = filtered.replace(pattern, (match) => '#'.repeat(match.length));
+	}
+	return filtered;
+}
+
 function sendChatMessage() {
-	const text = chatInput.value.trim();
+	const text = filterMessage(chatInput.value.trim());
 	if (!text) return;
 	if (multiplayerSocket.readyState === WebSocket.OPEN) {
 		multiplayerSocket.send(JSON.stringify({ type: 'chat', text }));
@@ -198,7 +207,7 @@ function appendChatMessage(username, text) {
 	const strong = document.createElement('strong');
 	strong.textContent = `${username}: `;
 	line.appendChild(strong);
-	line.appendChild(document.createTextNode(text));
+	line.appendChild(document.createTextNode(filterMessage(text)));
 	chatLog.appendChild(line);
 	chatLog.scrollTop = chatLog.scrollHeight;
 }
@@ -209,24 +218,27 @@ let WalkSpeed = -0.7;
 let spawn = new THREE.Vector3();
 
 //=====Movement feel (accel/friction model, coyote time, jump buffer)=====\\
+// Velocity ramps up/down instead of snapping to max speed.
 let velocityX = 0;
 let velocityZ = 0;
-const groundAccel = 2;
-const groundFriction = 0.75;
-const airAccel = 0.22;
-                            
-const airFriction = 0.02;
+const groundAccel = 2;   // ground speed ramp-up rate
+const groundFriction = 0.75; // ground stop speed (0-1, higher = snappier)
+const airAccel = 0.22;     // air control strength
+const airFriction = 0.02;  // air momentum loss (low = keeps speed through jumps)
 
+// Coyote time: jump still works briefly after leaving a ledge.
+// Jump buffer: early jump press still registers on landing.
 let coyoteTimer = 999;
 let jumpBufferTimer = 999;
-const COYOTE_TIME = 9;
-const JUMP_BUFFER_TIME = 9;
+const COYOTE_TIME = 9;      // ~0.15s at 60fps
+const JUMP_BUFFER_TIME = 9; // ~0.15s at 60fps
 
 // Sprint: held key, only takes effect on ground.
 let isSprinting = false;
 const sprintMultiplier = 1.6; // top speed while sprinting = groundSpeed * this
 
-const airMaxSpeedMultiplier = 0.35; // baseline air cap vs ground cap when NOT already fast
+// Air speed cap: ground cap, or current speed if faster (keeps momentum).
+const airMaxSpeedMultiplier = 0.35; // baseline air cap vs ground cap
 
 function SetSpawn(x,y,z) {
    spawn = new THREE.Vector3(x,y,z);
@@ -241,8 +253,7 @@ camera.rotation.order = 'YXZ';
 let theta = 0;
 let phi = 0;
 let distance = 8;
-let sensitivity = 0.0032;
-
+let sensitivity = 0.0032; // was 0.007, too fast
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 const FIRST_PERSON_DISTANCE = 1.2;
@@ -483,7 +494,7 @@ window.loadMapFromURL = loadMapFromURL;
 window.clearMap = clearMap;
 
 async function loadMapForCurrentGame() {
-    if (GAME_ID === '1') {
+    if (GAME_ID === 'main') {
         return loadMapFromURL("maps/Demo.json");
     }
 
@@ -495,7 +506,7 @@ async function loadMapForCurrentGame() {
         const game = games.find(g => String(g.Id) === String(GAME_ID));
         if (!game) throw new Error(`No game with id ${GAME_ID} in the catalog`);
 
-        const mapPath = game.game_path || `maps/${game.name}.json`;
+        const mapPath = game.game_path || `maps/${game.name}_${game.Id}.json`;
         return await loadMapFromURL(mapPath);
     } catch (err) {
         console.warn('[map] could not load map for this game, falling back to the demo map:', err);
@@ -646,13 +657,12 @@ async function equipHat(root, avatar) {
     const equippedIds = new Set(avatar.accessories.ids);
     const hatItem = items.find(item => item.type === "Hat" && equippedIds.has(item.Id));
 
-    // Remove whatever hat this root was previously wearing before adding
-    // the new one -- keeps re-equip/unequip clean instead of stacking.
+    // Remove any previous hat before adding the new one.
     const previousHat = equippedHatByRoot.get(root);
-    //if (previousHat) {
-        //previousHat.parent?.remove(previousHat);
-        //equippedHatByRoot.delete(root);
-    //}
+    if (previousHat) {
+        previousHat.parent?.remove(previousHat);
+        equippedHatByRoot.delete(root);
+    }
     if (!hatItem || !hatItem.model) return;
 
     let hat;
@@ -914,7 +924,7 @@ function updateOtherPlayers(players) {
         if (data.anim) setRemoteAnimation(p, data.anim);
     }
 
-    // Remove players who disconnected
+    // Remove disconnected players
     for (const id in otherPlayers) {
         if (!seenIds.has(id)) {
             scene.remove(otherPlayers[id].root);
@@ -1080,10 +1090,9 @@ function checkPartCollisions() {
             pushOverlap = Math.max(0, hit.overlap - CLIMB_STICK);
         }
 
-        if (!part.CanCollide) continue;
+        if (part.CanCollide) continue;
 
         if (!part.Anchored && !isVertical) {
-			if (!part.CanCollide) continue;
             const pushToBlock = pushOverlap * PART_PUSH_SHARE;
             const pushToPlayer = pushOverlap - pushToBlock;
 
@@ -1229,11 +1238,7 @@ window.addEventListener('keyup', (e) => { if (e.code in keys) keys[e.code] = fal
 
 document.addEventListener("keydown", (event) => {
     if (event.key === 'p') {
-        // currentState (not just the local action) drives what
-        // sendMyPosition() broadcasts to other players -- without this,
-        // pointing was purely a local visual and never reached anyone
-        // else. The mixer's 'finished' listener below resets currentState
-        // back to "" once the one-shot animation completes.
+        // currentState is what gets broadcast to other players.
         currentState = "point";
         fadeToAnimation('Point');
     }
@@ -1249,10 +1254,7 @@ document.addEventListener('keydown', (event) => {
       // climbLaunchVelocity.copy(climbNormal).multiplyScalar(CLIMB_LAUNCH_SPEED);
       globalSound.play();
     } else {
-      // Don't jump here directly -- just remember the press. animate()
-      // resolves it against coyote time / grounded state every frame,
-      // which is what lets a slightly-early or slightly-late press
-      // still register.
+      // Just remember the press; animate() resolves it with coyote time.
       jumpBufferTimer = 0;
     }
   }
@@ -1352,9 +1354,8 @@ console.log("Loaded clips:", gltf.animations.map(a => a.name));
 
 window.isClimbing = isClimbing
 
-// Built fresh each frame and handed to every Script under GameScripts.
-// This -- not `window` -- is the intended way for UGC scripts to reach
-// into the live game (spawn parts, read/change health, etc).
+// Handed to every Script under GameScripts each frame; the intended
+// way for UGC scripts to reach into the live game (not `window`).
 function buildScriptContext(time) {
     return {
         time,
@@ -1427,10 +1428,7 @@ function animate() {
         gltf.scene.position.y += velocityY * dt;
         checkPartCollisions();
 
-        // --- Coyote time + jump buffer resolution ---
-        // Runs every frame: if isGrounded just became true, coyoteTimer
-        // resets to 0. Both timers count UP, so "< TIME" means "still
-        // within the window."
+        // Coyote time + jump buffer resolution (timers count up).
         coyoteTimer += dt;
         jumpBufferTimer += dt;
         if (isGrounded) coyoteTimer = 0;
@@ -1454,9 +1452,7 @@ function animate() {
         if (keys.KeyA && Paused === false && Siting === false) { moveDirection.x += rightX;   moveDirection.z += rightZ; }
         if (keys.KeyD && Paused === false && Siting === false) { moveDirection.x -= rightX;   moveDirection.z -= rightZ; }
 
-        // Sprint only actually does anything while grounded and moving --
-        // holding it in the air or standing still is harmless but has no
-        // effect, since air speed is governed by momentum instead (below).
+        // Sprint only applies while grounded and moving.
         isSprinting = keys.ShiftLeft && Paused === false && Siting === false && moveDirection.lengthSq() > 0.0001;
 
         if (Siftlock && Siting === false) {
@@ -1473,11 +1469,8 @@ function animate() {
         if (moveDirection.lengthSq() > 0.0001) moveDirection.normalize();
 
         if (!isClimbing) {
-            // --- Accelerate/decelerate instead of snapping to max speed ---
-            // WalkSpeed is negative (and still respected here -- e.g. death
-            // sets it to 0 in CheckHealth(), which now naturally means
-            // "can't build up speed," and friction coasts you to a stop
-            // instead of an abrupt halt).
+            // Accelerate/decelerate instead of snapping to max speed.
+            // WalkSpeed is negative (death sets it to 0, killing movement).
             const grounded = isGrounded;
             const accel = grounded ? groundAccel : airAccel;
             const friction = grounded ? groundFriction : airFriction;
@@ -1491,10 +1484,7 @@ function animate() {
                 maxSpeed = Math.max(groundSpeed * airMaxSpeedMultiplier, currentSpeed);
             }
 
-            // moveDirection*WalkSpeed was the old effective direction
-            // (WalkSpeed is negative), so wish = -moveDirection at
-            // maxSpeed magnitude keeps movement pointing the same way
-            // it always has.
+            // WalkSpeed is negative, so wish direction is flipped.
             const wishX = -moveDirection.x;
             const wishZ = -moveDirection.z;
 
@@ -1507,8 +1497,7 @@ function animate() {
                 velocityZ += wishZ * accelAmount;
             }
 
-            // Friction: always bleeds some speed on ground (so you actually
-            // stop), barely touches it in the air (so jumps keep momentum).
+            // Friction: strong on ground, weak in air (keeps jump momentum).
             const speed = Math.hypot(velocityX, velocityZ);
             if (speed > 0.0001) {
                 const drop = speed * friction * dt;
@@ -1517,15 +1506,8 @@ function animate() {
                 velocityZ *= scale;
             }
 
-            // Hard cap -- this is the actual fix for flying off the map.
-            // The accel math above only limits how much speed gets added
-            // IN THE CURRENT WISH DIRECTION. If you spin fast while holding
-            // a movement key, every frame's wish direction is slightly
-            // different, so it keeps allowing more speed in the new
-            // direction without ever removing the old sideways momentum --
-            // the total velocity vector just keeps growing frame over
-            // frame. This clamps total speed to maxSpeed no matter what,
-            // regardless of how that speed got built up.
+            // Hard cap: stops speed from building up past maxSpeed
+            // when spinning fast (fixes flying off the map).
             const finalSpeed = Math.hypot(velocityX, velocityZ);
             if (finalSpeed > maxSpeed) {
                 const clampScale = maxSpeed / finalSpeed;
