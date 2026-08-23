@@ -44,4 +44,13 @@
     "type": "Hat",
     "price": 0
   }
+  {
+    "Id": 6,
+    "name": "Traffic Cone",
+    "description": "CONE",
+    "model": "/assets/models/Cone.gltf",
+    "texture": "",
+    "type": "Hat",
+    "price": 0
+  }
 ]
