@@ -649,10 +649,10 @@ async function equipHat(root, avatar) {
     // Remove whatever hat this root was previously wearing before adding
     // the new one -- keeps re-equip/unequip clean instead of stacking.
     const previousHat = equippedHatByRoot.get(root);
-    if (previousHat) {
-        previousHat.parent?.remove(previousHat);
-        equippedHatByRoot.delete(root);
-    }
+    //if (previousHat) {
+        //previousHat.parent?.remove(previousHat);
+        //equippedHatByRoot.delete(root);
+    //}
     if (!hatItem || !hatItem.model) return;
 
     let hat;
