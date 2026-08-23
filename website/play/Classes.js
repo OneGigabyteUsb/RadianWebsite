@@ -118,7 +118,8 @@ export const MATERIALS = {
     stone: "textures/Stone.png",
     pebble: "textures/Pebble.png",
     brick: "textures/Brick.png",
-    concrete: "textures/concrete.png"
+    concrete: "textures/concrete.png",
+    lava: "textures/lava.png"
 };
 
 export const activeParts = [];
