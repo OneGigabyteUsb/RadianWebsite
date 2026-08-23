@@ -15,7 +15,7 @@
       "script": "",
       "scriptLang": "javascript",
       "killbrick": false,
-      "CanCollide": false,
+      "CanCollide": true,
       "isSpawnLocation": false,
       "IsClimbable": false,
       "Anchored": true,
