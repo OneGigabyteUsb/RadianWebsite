@@ -506,7 +506,7 @@ async function loadMapForCurrentGame() {
         const game = games.find(g => String(g.Id) === String(GAME_ID));
         if (!game) throw new Error(`No game with id ${GAME_ID} in the catalog`);
 
-        const mapPath = game.game_path || `maps/${game.name}_${game.Id}.json`;
+        const mapPath = game.game_path || `maps/${game.name}.json`;
         return await loadMapFromURL(mapPath);
     } catch (err) {
         console.warn('[map] could not load map for this game, falling back to the demo map:', err);
