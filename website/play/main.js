@@ -1082,7 +1082,8 @@ function checkPartCollisions() {
 
         if (!part.CanCollide) continue;
 
-        if (!part.Anchored && !isVertical && part.CanCollide) {
+        if (!part.Anchored && !isVertical) {
+			if (!part.CanCollide) continue;
             const pushToBlock = pushOverlap * PART_PUSH_SHARE;
             const pushToPlayer = pushOverlap - pushToBlock;
 
