@@ -1114,6 +1114,28 @@ function loginPage() {
 }
 
 
+//=====Username filtering=====\\
+// Same list/logic as the in-game chat filter, kept in sync manually since
+// this page doesn't share code with the game client. Add words below
+// (lowercase). Usernames get REJECTED (not censored) if they match.
+const bannedWords = [
+    "fuck", "shit", "bitch", "bastard", "cunt", "piss", "slut", "whore", "ass",
+    "faggot", "retard", "nigger", "nigga", "asshole", "cock", "dick", "motherfucker", "dickbeaters", "cocksucker", "asscracker", "dickmonger", "cunt", "assjacker", "bullshit", "twat", "hitler"
+];
+
+function buildBannedWordPattern(word) {
+	const letters = word.split('').map(c => c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+	const gap = '[\\s_\\-.]*';
+	const core = letters.join(gap);
+	const suffix = `${gap}(?:s|es|ed|ing|er|ers)?`;
+	return new RegExp(`(?<![a-zA-Z0-9])${core}${suffix}(?![a-zA-Z0-9])`, 'gi');
+}
+
+function containsBannedWord(text) {
+	return bannedWords.some(word => buildBannedWordPattern(word).test(text));
+}
+
+
 async function signupPage() {
 
     try {
@@ -1168,6 +1190,12 @@ async function signupPage() {
 
         if (password !== confirmPassword) {
             errorBox.textContent = "Passwords do not match.";
+            errorBox.style.display = "block";
+            return;
+        }
+
+        if (containsBannedWord(username)) {
+            errorBox.textContent = "That username isn't allowed. Please choose another.";
             errorBox.style.display = "block";
             return;
         }
