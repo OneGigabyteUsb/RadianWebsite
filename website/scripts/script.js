@@ -825,7 +825,7 @@ async function initAvatarPreview(avatar, items) {
     const textureLoader = new THREE.TextureLoader();
 
     try {
-        const gltf = await loader.loadAsync("play/model.gltf");
+        const gltf = await loader.loadAsync("/play/models/model.gltf");
         const model = gltf.scene;
         model.traverse((obj) => {
             if (!obj.isMesh) return;
@@ -852,7 +852,7 @@ async function initAvatarPreview(avatar, items) {
             if (item.type === "T-shirt") {
                 if (!shirtMesh || !item.texture) continue;
                 try {
-                    const tex = await textureLoader.loadAsync(item.texture);
+                    const tex = await textureLoader.loadAsync(`/assets/t-shirts/${item.texture}`);
                     tex.colorSpace = THREE.SRGBColorSpace;
                     shirtMesh.material.map = tex;
                     shirtMesh.material.needsUpdate = true;
@@ -863,7 +863,7 @@ async function initAvatarPreview(avatar, items) {
             } else if (item.type === "Hat") {
                 if (!item.model) continue;
                 try {
-                    const hatGltf = await loader.loadAsync(item.model);
+                    const hatGltf = await loader.loadAsync(`/assets/models/${item.model}`);
                     const hat = hatGltf.scene;
 
                     let hatTexture = null;
