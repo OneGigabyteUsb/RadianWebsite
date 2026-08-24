@@ -176,8 +176,8 @@ emoteButton.addEventListener('click', function (event) {
 //=====Chat Messages=====\\
 // Add your own words below (lowercase, whole-word match).
 const bannedWords = [
-    "fuck", "shit", "bitch", "bastard", "cunt", "piss", "slut", "whore",
-    "faggot", "retard", "nigger", "nigga", "asshole", "cock", "dick"
+    "fuck", "shit", "bitch", "bastard", "cunt", "piss", "slut", "whore", "ass",
+    "faggot", "retard", "nigger", "nigga", "asshole", "cock", "dick", "motherfucker", "dickbeaters", "cocksucker", "asscracker", "dickmonger", "cunt", "assjacker", "bullshit", "twat"
 ];
 
 // Allows separator "noise" (spaces, underscores, dashes, dots) between
