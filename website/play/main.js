@@ -1618,7 +1618,7 @@ function animate() {
         }
 
         if (Siting === true) {
-           camera.position.y = target.y + heightOffset + effectiveDistance *s Math.sin(phi);
+           camera.position.y = target.y + heightOffset + effectiveDistance * Math.sin(phi);
         }
         camera.lookAt(target.x, target.y + heightOffset, target.z);
     }
