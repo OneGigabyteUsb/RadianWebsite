@@ -794,9 +794,9 @@ async function initAvatarPreview(avatar, items) {
     if (!canvas) return { setColor() {}, cleanup() {} };
 
     const [THREE, { GLTFLoader }, { OrbitControls }] = await Promise.all([
-        import("https://unpkg.com/three@0.160.0/build/three.module.js"),
-        import("https://unpkg.com/three@0.160.0/examples/jsm/loaders/GLTFLoader.js"),
-        import("https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js"),
+        import("https://esm.sh/three@0.174.0"),
+        import("https://esm.sh/three@0.174.0/jsm/loaders/GLTFLoader.js"),
+        import("https://esm.sh/three@0.174.0/jsm/controls/OrbitControls.js"),
     ]);
 
     const scene = new THREE.Scene();
