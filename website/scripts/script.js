@@ -795,8 +795,8 @@ async function initAvatarPreview(avatar, items) {
 
     const [THREE, { GLTFLoader }, { OrbitControls }] = await Promise.all([
         import("https://esm.sh/three@0.174.0"),
-        import("https://esm.sh/three@0.174.0/jsm/loaders/GLTFLoader.js"),
-        import("https://esm.sh/three@0.174.0/jsm/controls/OrbitControls.js"),
+        import("https://esm.sh/three@0.174.0/loaders/GLTFLoader.js"),
+        import("https://esm.sh/three@0.174.0/controls/OrbitControls.js"),
     ]);
 
     const scene = new THREE.Scene();
