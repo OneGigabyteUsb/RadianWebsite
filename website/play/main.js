@@ -431,12 +431,15 @@ function loadMap(mapData) {
     });
  
     currentMapData = mapData;
+	console.log(mapData.spawn)
 
     SetSpawn(0,0,0)
 
     if (mapData.spawn) {
         if (modelReady === true) {
-            gltf.scene.position.set(spawn.x, spawn.y, spawn.z);
+            gltf.scene.position.x = mapData.spawn.x;
+			gltf.scene.position.y = mapData.spawn.y;
+			gltf.scene.position.z = mapData.spawn.z;
             velocityY = 0;
         } else {
             pendingSpawn = mapData.spawn;
