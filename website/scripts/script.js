@@ -825,7 +825,7 @@ async function initAvatarPreview(avatar, items) {
     const textureLoader = new THREE.TextureLoader();
 
     try {
-        const gltf = await loader.loadAsync("models/model.gltf");
+        const gltf = await loader.loadAsync("play/model.gltf");
         const model = gltf.scene;
         model.traverse((obj) => {
             if (!obj.isMesh) return;
