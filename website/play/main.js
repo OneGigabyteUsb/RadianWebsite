@@ -195,7 +195,7 @@ function filterMessage(text) {
 	let filtered = text;
 	for (const word of bannedWords) {
 		const pattern = buildBannedWordPattern(word);
-		filtered = filtered.replace(pattern, (match) => '*'.repeat(match.length));
+		filtered = filtered.replace(pattern, (match) => '#'.repeat(match.length));
 	}
 	return filtered;
 }
