@@ -1135,14 +1135,13 @@ function checkPartCollisions() {
 
 function stepDynamicParts(dt) {
     for (let i = 0; i < dynamicParts.length; i++) {
-		if (!part.CanCollide) continue;
         const part = dynamicParts[i];
         const wasGrounded = !!part._grounded;
 
         part.velocity.y += partGravity * dt;
         part.velocity.y = Math.max(-partTerminalVelocity, Math.min(partTerminalVelocity, part.velocity.y));
 
-        if (wasGrounded) {
+        if (wasGrounded && part.CanCollide) {
             const friction = Math.max(0, 1 - PART_FRICTION * dt);
             part.velocity.x *= friction;
             part.velocity.z *= friction;
