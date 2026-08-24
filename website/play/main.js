@@ -1135,6 +1135,7 @@ function checkPartCollisions() {
 
 function stepDynamicParts(dt) {
     for (let i = 0; i < dynamicParts.length; i++) {
+		if (!part.CanCollide) continue;
         const part = dynamicParts[i];
         const wasGrounded = !!part._grounded;
 
