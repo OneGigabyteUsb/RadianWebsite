@@ -181,7 +181,7 @@ export class Part extends BasicClass {
         this.Transparency = data.Transparency ?? data.transparency ?? 1;
 
         this.killbrick = data.killbrick ?? false;
-        this.CanCollide = data.CanCollide ?? false;
+        this.CanCollide = data.CanCollide ?? true;
         this.isSpawnLocation = data.isSpawnLocation ?? false;
         this.IsClimbable = data.IsClimbable ?? false;
         this.Siting = data.Siting ?? false;
@@ -256,7 +256,7 @@ export class Part extends BasicClass {
 
         activeParts.push(this);
         if (!this.Anchored) dynamicParts.push(this);
-        if (!this.CanCollide) collidableMeshes.push(this.mesh);
+        if (this.CanCollide) collidableMeshes.push(this.mesh);
 
         this._attachToParent();
         register(this);
