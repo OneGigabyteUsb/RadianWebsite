@@ -1098,7 +1098,7 @@ function checkPartCollisions() {
             pushOverlap = Math.max(0, hit.overlap - CLIMB_STICK);
         }
 
-        if (part.CanCollide) continue;
+        if (!part.CanCollide) continue;
 
         if (!part.Anchored && !isVertical) {
             const pushToBlock = pushOverlap * PART_PUSH_SHARE;
@@ -1167,7 +1167,7 @@ function stepDynamicParts(dt) {
 
             other.updateHitbox();
             const hit = resolveOBBOverlap(part.obb, other.obb);
-            if (!hit || other.CanCollide) continue;
+            if (!hit || !other.CanCollide) continue;
 
             _partPushVec.copy(hit.axis).multiplyScalar(hit.overlap);
             part.x += _partPushVec.x;
