@@ -646,7 +646,7 @@ const itemsCatalogPromise = fetch('/api/items.json')
     .then(r => (r.ok ? r.json() : []))
     .catch(() => []);
 
-const equippedHatByRoot = new WeakMap(); 
+const equippedHatsByRoot = new WeakMap(); // root -> array of hat groups
 
 function findHeadBone(root) {
     let headBone = null;
@@ -658,70 +658,84 @@ function findHeadBone(root) {
 }
 
 const HAT_BONE_Y_OFFSET = 0.18;
+const HAT_STACK_SPACING = 0.05; // extra height added per stacked hat so they don't overlap
 
 async function equipHat(root, avatar) {
     if (!avatar || !avatar.accessories) return;
     const items = await itemsCatalogPromise;
     const equippedIds = new Set(avatar.accessories.ids);
-    const hatItem = items.find(item => item.type === "Hat" && equippedIds.has(item.Id));
+    const hatItems = items.filter(item => item.type === "Hat" && equippedIds.has(item.Id));
 
-    // Remove any previous hat before adding the new one.
-    const previousHat = equippedHatByRoot.get(root);
-    if (previousHat) {
-        previousHat.parent?.remove(previousHat);
-        equippedHatByRoot.delete(root);
+    // Remove any previously equipped hats before adding the new set.
+    const previousHats = equippedHatsByRoot.get(root);
+    if (previousHats) {
+        for (const group of previousHats) group.parent?.remove(group);
+        equippedHatsByRoot.delete(root);
     }
-    if (!hatItem || !hatItem.model) return;
+    if (hatItems.length === 0) return;
 
-    let hat;
-    try {
-        const hatGltf = await loader.loadAsync(hatItem.model);
-        hat = hatGltf.scene;
-    } catch (err) {
-        console.warn(`[avatar] could not load hat model for item ${hatItem.Id}`, err);
-        return;
-    }
+    const newHatGroups = [];
 
-    if (hatItem.texture) {
+    for (let i = 0; i < hatItems.length; i++) {
+        const hatItem = hatItems[i];
+        if (!hatItem.model) continue;
+
+        let hat;
         try {
-            const hatTexture = await sharedTextureLoader.loadAsync(hatItem.texture);
-            hatTexture.colorSpace = THREE.SRGBColorSpace;
-            hat.traverse((obj) => {
-                if (!obj.isMesh) return;
-                obj.material = obj.material.clone();
-                obj.material.map = hatTexture;
-                obj.material.needsUpdate = true;
-            });
+            const hatGltf = await loader.loadAsync(hatItem.model);
+            hat = hatGltf.scene;
         } catch (err) {
-            console.warn(`[avatar] could not load hat texture for item ${hatItem.Id}`, err);
+            console.warn(`[avatar] could not load hat model for item ${hatItem.Id}`, err);
+            continue;
         }
-    }
 
-    const hatGroup = new THREE.Group();
-    hatGroup.add(hat);
+        if (hatItem.texture) {
+            try {
+                const hatTexture = await sharedTextureLoader.loadAsync(hatItem.texture);
+                hatTexture.colorSpace = THREE.SRGBColorSpace;
+                hat.traverse((obj) => {
+                    if (!obj.isMesh) return;
+                    obj.material = obj.material.clone();
+                    obj.material.map = hatTexture;
+                    obj.material.needsUpdate = true;
+                });
+            } catch (err) {
+                console.warn(`[avatar] could not load hat texture for item ${hatItem.Id}`, err);
+            }
+        }
 
-    const headBone = findHeadBone(root);
-    if (headBone) {
-        // Bone-local space: no geometry to measure, just a tuned offset.
-        hatGroup.position.set(0, HAT_BONE_Y_OFFSET, 0);
-        headBone.add(hatGroup);
-    } else {
-        const headMesh = root.getObjectByName("Head_1");
-        if (headMesh) {
-            headMesh.geometry.computeBoundingBox();
-            const box = headMesh.geometry.boundingBox;
-            hatGroup.position.set(
-                (box.min.x + box.max.x) / 2,
-                box.max.y,
-                (box.min.z + box.max.z) / 2
-            );
-            headMesh.add(hatGroup);
+        const hatGroup = new THREE.Group();
+        hatGroup.add(hat);
+
+        // Each stacked hat sits a bit higher than the last so multiple
+        // hats don't render on top of each other at the same spot.
+        const stackOffset = HAT_BONE_Y_OFFSET + i * HAT_STACK_SPACING;
+
+        const headBone = findHeadBone(root);
+        if (headBone) {
+            // Bone-local space: no geometry to measure, just a tuned offset.
+            hatGroup.position.set(0, stackOffset, 0);
+            headBone.add(hatGroup);
         } else {
-            root.add(hatGroup); // last resort, sits at the model's origin
+            const headMesh = root.getObjectByName("Head_1");
+            if (headMesh) {
+                headMesh.geometry.computeBoundingBox();
+                const box = headMesh.geometry.boundingBox;
+                hatGroup.position.set(
+                    (box.min.x + box.max.x) / 2,
+                    box.max.y + i * HAT_STACK_SPACING,
+                    (box.min.z + box.max.z) / 2
+                );
+                headMesh.add(hatGroup);
+            } else {
+                root.add(hatGroup); // last resort, sits at the model's origin
+            }
         }
+
+        newHatGroups.push(hatGroup);
     }
 
-    equippedHatByRoot.set(root, hatGroup);
+    equippedHatsByRoot.set(root, newHatGroups);
 }
 
 async function equipShirt(root, avatar) {
