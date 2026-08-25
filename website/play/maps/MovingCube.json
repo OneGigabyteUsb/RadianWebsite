@@ -1,0 +1,30 @@
+{
+  "name": "Moving Cube Demo",
+  "spawn": { "x": 0, "y": 2, "z": 8 },
+  "parts": [
+    {
+      "name": "Ground",
+      "x": 0, "y": -0.5, "z": 0,
+      "sx": 40, "sy": 1, "sz": 40,
+      "color": "#5cb85c",
+      "Anchored": true
+    },
+    {
+      "name": "MovingCube",
+      "x": 0, "y": 1, "z": 0,
+      "sx": 3, "sy": 3, "sz": 3,
+      "color": "#e74c3c",
+      "Anchored": true,
+      "CanCollide": true
+    }
+  ],
+  "lights": [
+    { "name": "MainLight", "x": 0, "y": 15, "z": 0, "intensity": 1.2, "color": "#ffffff" }
+  ],
+  "scripts": [
+    {
+      "name": "MovingCubeScript",
+      "scriptString": "const cube = context.findInstance('MovingCube'); if (!cube) return; const baseX = 0; const amplitude = 8; const speed = 0.8; cube.x = baseX + Math.sin(time * speed) * amplitude; cube.mesh.position.set(cube.x, cube.y, cube.z); cube.updateHitbox();"
+    }
+  ]
+}
