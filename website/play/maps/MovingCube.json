@@ -7,7 +7,7 @@
       "x": 0, "y": -0.5, "z": 0,
       "sx": 40, "sy": 1, "sz": 40,
       "color": "#5cb85c",
-      "Anchored": true
+      "Anchored": true,
       "material": "stone"
     },
     {
@@ -16,7 +16,7 @@
       "sx": 3, "sy": 3, "sz": 3,
       "color": "#e74c3c",
       "Anchored": true,
-      "CanCollide": true
+      "CanCollide": true,
       "material": "grass"
     }
   ],
