@@ -37,8 +37,8 @@
   },
   {
     "Id": 5,
-    "name": "Hair",
-    "description": "Now your not bald.",
+    "name": "Brown Boy Hair",
+    "description": "You're a boy. You've got brown hair.",
     "model": "/assets/models/BoyHair.gltf",
     "texture": "",
     "type": "Hat",
