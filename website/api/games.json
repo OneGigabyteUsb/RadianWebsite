@@ -19,25 +19,16 @@
   },
   {
     "Id": 3,
-    "name": "Google",
-    "description": "Google.com",
+    "name": "Moving Cube thingy",
+    "description": "Moving Cube is cool",
     "creator_id": 3,
-    "creator_name": "JokeAccount",
+    "creator_name": "OneGigabyteUsb",
     "thumbnail_version": 1,
-    "game_path": "maps/Demo.json"
+    "game_path": "maps/MovingCube.json"
   },
   {
     "Id": 4,
     "name": "BrickBattle: Waterfall Fortress",
-    "description": "Google.com",
-    "creator_id": 3,
-    "creator_name": "OneGigabyteUsb",
-    "thumbnail_version": 1,
-    "game_path": "maps/Demo.json"
-  },
-  {
-    "Id": 5,
-    "name": "BrickBattle Fortress",
     "description": "Google.com",
     "creator_id": 3,
     "creator_name": "OneGigabyteUsb",
