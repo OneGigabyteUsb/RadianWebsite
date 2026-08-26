@@ -243,7 +243,7 @@ const JUMP_BUFFER_TIME = 9; // ~0.15s at 60fps
 
 // Sprint: held key, only takes effect on ground.
 let isSprinting = false;
-const sprintMultiplier = 1.6; // top speed while sprinting = groundSpeed * this
+const sprintMultiplier = 1.3; // top speed while sprinting = groundSpeed * this
 
 // Air speed cap: ground cap, or current speed if faster (keeps momentum).
 const airMaxSpeedMultiplier = 0.35; // baseline air cap vs ground cap
