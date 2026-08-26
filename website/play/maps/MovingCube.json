@@ -93,7 +93,7 @@
       "material": "stone"
     },
     {
-      "name": "cube",
+      "name": "MovingCube",
       "script": "",
       "scriptLang": "javascript",
       "killbrick": false,
