@@ -14,14 +14,14 @@
       "name": "MovingCube",
       "x": 0, "y": 1, "z": 0,
       "sx": 3, "sy": 3, "sz": 3,
-      "color": "#e74c3c",
+      "color": "#ff0000",
       "Anchored": true,
       "CanCollide": true,
       "material": "stone"
     }
   ],
   "lights": [
-    { "name": "MainLight", "x": 0, "y": 15, "z": 0, "intensity": 1.2, "color": "#ffffff" }
+    { "name": "MainLight", "parent": "cube", "x": 0, "y": 1.5, "z": 0, "intensity": 1.2, "color": "#ff0000" }
   ],
   "scripts": [
     {
