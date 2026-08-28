@@ -166,9 +166,9 @@ export class Part extends BasicClass {
         this.y = data.y ?? 0;
         this.z = data.z ?? 0;
 
-        this.sx = data.sx ?? 1;
-        this.sy = data.sy ?? 1;
-        this.sz = data.sz ?? 1;
+        this.sx = Math.abs(data.sx) ?? 1;
+        this.sy = Math.abs(data.sy) ?? 1;
+        this.sz = Math.abs(data.sz) ?? 1;
 
         this.rx = data.rx ?? 0;
         this.ry = data.ry ?? 0;
