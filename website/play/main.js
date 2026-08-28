@@ -382,7 +382,7 @@ const renderer = new THREE.WebGLRenderer({ antialias: true })
 // renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFShadowMap; //PCFShadowMap;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap; //PCFShadowMap;
 renderer.setSize(window.innerWidth, window.innerHeight)
 document.body.appendChild(renderer.domElement)
 
