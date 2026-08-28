@@ -1,0 +1,49 @@
+{
+  "name": "Untitled Game",
+  "author": "You Brah",
+  "players": 1,
+  "Id": 1,
+  "background": null,
+  "spawn": {
+    "x": 0,
+    "y": 0,
+    "z": 0.9
+  },
+  "parts": [
+    {
+      "name": "",
+      "script": "",
+      "scriptLang": "javascript",
+      "killbrick": false,
+      "CanCollide": true,
+      "isSpawnLocation": false,
+      "IsClimbable": false,
+      "Anchored": true,
+      "x": 0,
+      "y": -0.5,
+      "z": 0,
+      "sx": 60,
+      "sy": 1,
+      "sz": 60,
+      "color": "#5cb85c",
+      "material": "grass"
+    },
+    {
+      "name": "",
+      "script": "",
+      "scriptLang": "javascript",
+      "killbrick": false,
+      "CanCollide": true,
+      "isSpawnLocation": false,
+      "IsClimbable": false,
+      "Anchored": true,
+      "x": 2,
+      "y": 1,
+      "z": 13,
+      "sx": 18.5,
+      "sy": 17,
+      "sz": -6.75,
+      "color": "#888888"
+    }
+  ]
+}
