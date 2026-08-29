@@ -579,7 +579,7 @@ let faceTexture = sharedTextureLoader.load("faces/default.png");
 faceTexture.colorSpace = THREE.SRGBColorSpace;
 faceTexture.flipY = false;
 
-const gltf = await loader.loadAsync( 'models/oldmodel.gltf' );
+const gltf = await loader.loadAsync( 'models/model.gltf' );
 gltf.scene.traverse((obj) => {
     if (!obj.isMesh) return;
     obj.receiveShadow = true;
