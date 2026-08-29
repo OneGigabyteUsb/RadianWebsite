@@ -135,10 +135,6 @@
     {
       "name": "MovingCubeScript",
       "scriptString": "const cube = context.findInstance('MovingCube'); if (!cube) return; const baseX = 0; const amplitude = 8; const speed = 0.8; cube.x = baseX + Math.sin(time * speed) * amplitude; cube.mesh.position.set(cube.x, cube.y, cube.z); cube.updateHitbox();"
-    },
-    {
-      "name": "LightScript",
-      "scriptString": "const light = context.findInstance('MainLight'); Light.updatePosition()"
     }
   ]
 }
