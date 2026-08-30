@@ -235,17 +235,12 @@ async function homePage() {
           <span>0 Followers</span>
           <span>0 Following</span>
         </div>
-
             <div class="HomeF-Grid">
-                <div id="home-friends-row" class="home-tile-row">
-                    <p class="home-empty-state">Loading friends...</p>
-                </div>
+                <p class="home-empty-state">Loading friends...</p>
             </div>
 
             <div class="HomeG-Grid">
-                <div id="home-lastplayed-row" class="home-tile-row">
-                    <p class="home-empty-state">Loading games...</p>
-                </div>
+                <p class="home-empty-state">Loading games...</p>
             </div>
         </div>
     `;
@@ -255,7 +250,7 @@ async function homePage() {
 }
 
 async function loadHomeFriends() {
-    const row = document.getElementById("home-friends-row");
+    const row = document.getElementById("HomeF-Grid");
     if (!row) return; // user already navigated away
 
     try {
@@ -282,7 +277,7 @@ async function loadHomeFriends() {
 }
 
 async function loadHomeLastPlayed() {
-    const row = document.getElementById("home-lastplayed-row");
+    const row = document.getElementById("HomeG-Grid");
     if (!row) return;
 
     try {
