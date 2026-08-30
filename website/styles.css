@@ -54,7 +54,7 @@ input[type="text"] {
 .HomeF-Grid {
   position: fixed;
   display: flex;
-  gap: 10px;
+  gap: 75px;
   
   left: 3%;
   padding: 10px;
