@@ -52,5 +52,14 @@
     "texture": "",
     "type": "Hat",
     "price": 0
+  },
+  {
+    "Id": 7,
+    "name": "Cardboard Hat",
+    "description": "Cardboard",
+    "model": "/assets/models/Cardboard-Hat.gltf",
+    "texture": "",
+    "type": "Hat",
+    "price": 0
   }
 ]
