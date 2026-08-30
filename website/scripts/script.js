@@ -229,18 +229,25 @@ async function homePage() {
 
     app.innerHTML = `
         <div class="home-body">
-        <h1 class="home-greeting">Good ${timeOfDayGreeting()}, ${me.username}</h1>
-        <div class="home-stats">
-          <span>2 Friends</span>
-          <span>0 Followers</span>
-          <span>0 Following</span>
-        </div>
-            <div class="HomeF-Grid" id="HomeF-Grid">
-                <p class="home-empty-state">Loading friends...</p>
+            <h1 class="home-greeting">Good ${timeOfDayGreeting()}, ${me.username}</h1>
+            <div class="home-stats">
+                <span>${me.friend_count} Friends</span>
+                <span>${me.follower_count} Followers</span>
+                <span>${me.following_count} Following</span>
             </div>
 
-            <div class="HomeG-Grid" id="HomeG-Grid">
-                <p class="home-empty-state">Loading games...</p>
+            <div class="home-panel">
+                <a href="/profile/${me.id}" data-link class="home-panel-header">Friends &rarr;</a>
+                <div id="home-friends-row" class="home-tile-row">
+                    <p class="home-empty-state">Loading friends...</p>
+                </div>
+            </div>
+
+            <div class="home-panel-2">
+                <a href="/games" data-link class="home-panel-header">Last played &rarr;</a>
+                <div id="home-lastplayed-row" class="home-tile-row">
+                    <p class="home-empty-state">Loading games...</p>
+                </div>
             </div>
         </div>
     `;
@@ -249,9 +256,14 @@ async function homePage() {
     loadHomeLastPlayed();
 }
 
+/**
+ * Populates the Friends panel via GET /api/me/friends. Falls back to a
+ * clear empty state if the request fails for any reason instead of
+ * showing fake placeholder people.
+ */
 async function loadHomeFriends() {
-    const row = document.getElementById("HomeF-Grid");
-    if (!row) return;
+    const row = document.getElementById("home-friends-row");
+    if (!row) return; // user already navigated away
 
     try {
         const res = await fetch("/api/me/friends");
@@ -265,19 +277,26 @@ async function loadHomeFriends() {
         }
 
         row.innerHTML = friends.map(friend => `
-            <a href="/profile/${friend.user_id}" data-link>
-                <div class="Friend">
-                    <span>${friend.username}</span>
-                </div>
+            <a class="friend-tile" href="/profile/${friend.user_id}" data-link>
+                <div class="friend-tile-thumb"></div>
+                <div class="friend-tile-name">${friend.username}</div>
             </a>
         `).join("");
     } catch (err) {
+        // Expected until a real /api/me/friends endpoint exists server-side.
         console.log(err)
+        //row.innerHTML = `<p class="home-empty-state">No friends yet.</p>`;
     }
 }
 
+/**
+ * Populates the Last Played panel. server.py's games.json is a catalog,
+ * not a per-user play-history log, so this shows the first few games from
+ * the catalog rather than genuine "recently played" data -- swap this out
+ * once there's a real endpoint for that.
+ */
 async function loadHomeLastPlayed() {
-    const row = document.getElementById("HomeG-Grid");
+    const row = document.getElementById("home-lastplayed-row");
     if (!row) return;
 
     try {
@@ -288,22 +307,27 @@ async function loadHomeLastPlayed() {
         }
 
         row.innerHTML = games.slice(0, 100).map(game => `
-		    <a href="/games/${game.id}">
-                <div class="Game">
-                    <div class="game-card-thumb">
-                        <img src="thumbnails/games/${game.name}.png" alt="${game.name}" width="100%">
-                    </div>
-                    <div class="game-card-body">
-                        <span>${game.name}</span>
-                    </div>
+            <a class="game-tile" href="/games/${game.id}" data-link>
+                <div class="game-tile-thumb">
+                    <img src="thumbnails/games/${game.name}.png" alt="${game.name}"
+                         onerror="this.parentElement.textContent='${game.name.replace(/'/g, "\\'")}'">
                 </div>
-              </a>
+                <div class="game-tile-name">${game.name}</div>
+                <div class="game-tile-meta">Players: 0</div>
+            </a>
         `).join("");
     } catch (err) {
         row.innerHTML = `<p class="home-empty-state">Could not load games.</p>`;
     }
 }
 
+
+/**
+ * Game detail page (/games/<id>) -- matches the "Image / GameName / By
+ * User / Description / Play" concept art. Reuses the same games.json
+ * catalog as the Games grid rather than needing a new endpoint, since
+ * Game already carries description/creatorName.
+ */
 async function gameDetailPage(id) {
 
     app.innerHTML = `<div class="home-body"><p>Loading...</p></div>`;
