@@ -235,11 +235,11 @@ async function homePage() {
           <span>0 Followers</span>
           <span>0 Following</span>
         </div>
-            <div class="HomeF-Grid">
+            <div class="HomeF-Grid" id="HomeF-Grid">
                 <p class="home-empty-state">Loading friends...</p>
             </div>
 
-            <div class="HomeG-Grid">
+            <div class="HomeG-Grid" id="HomeG-Grid">
                 <p class="home-empty-state">Loading games...</p>
             </div>
         </div>
@@ -251,7 +251,7 @@ async function homePage() {
 
 async function loadHomeFriends() {
     const row = document.getElementById("HomeF-Grid");
-    if (!row) return; // user already navigated away
+    if (!row) return;
 
     try {
         const res = await fetch("/api/me/friends");
