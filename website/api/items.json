@@ -63,7 +63,7 @@
     "price": 0
   },
   {
-    "Id": 6,
+    "Id": 8,
     "name": "Camp Radian",
     "description": "Cardboard",
     "model": "/assets/models/RadianCamp.gltf",
