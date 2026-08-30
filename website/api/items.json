@@ -61,5 +61,14 @@
     "texture": "",
     "type": "Hat",
     "price": 0
+  },
+  {
+    "Id": 6,
+    "name": "Camp Radian",
+    "description": "Cardboard",
+    "model": "/assets/models/RadianCamp.gltf",
+    "texture": "",
+    "type": "Hat",
+    "price": 0
   }
 ]
