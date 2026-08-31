@@ -1386,7 +1386,6 @@ export default {
                 INSERT INTO users (
                     username,
                     bio,
-                    
                     created_at,
                     is_deleted,
                     is_staff,
@@ -1394,7 +1393,7 @@ export default {
                     is_banned,
                     last_seen
                 )
-                VALUES (?, '', 0, datetime('now'), 0, 0, 0, 0, 1, datetime('now'))
+                VALUES (?, '', datetime('now'), 0, 0, 0, 0, datetime('now'))
             `)
                     .bind(username)
                     .run();
