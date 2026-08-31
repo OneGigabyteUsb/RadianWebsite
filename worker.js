@@ -272,9 +272,9 @@ export default {
 
                 const user = await env.DB
                     .prepare(`
-                        SELECT id, username, bio, visits, created_at,
+                        SELECT id, username, bio,  created_at,
                                is_deleted, is_staff, is_moderator,
-                               is_banned, shirt_id, last_seen
+                               is_banned, last_seen
                         FROM users
                         WHERE id = ?
                     `)
@@ -670,7 +670,6 @@ export default {
                     u.id AS user_id,
                     u.username,
                     u.bio,
-                    u.shirt_id
                 FROM friendships f
                 JOIN users u
                     ON u.id = CASE
@@ -1124,8 +1123,8 @@ export default {
 
                 const user = await env.DB
                     .prepare(`
-                        SELECT id, username, bio, visits, created_at,
-                               is_staff, is_moderator, shirt_id, last_seen
+                        SELECT id, username, bio, created_at,
+                               is_staff, is_moderator, last_seen
                         FROM users
                         WHERE id = ? AND is_deleted = 0
                     `)
@@ -1387,13 +1386,12 @@ export default {
                 INSERT INTO users (
                     username,
                     bio,
-                    visits,
+                    
                     created_at,
                     is_deleted,
                     is_staff,
                     is_moderator,
                     is_banned,
-                    shirt_id,
                     last_seen
                 )
                 VALUES (?, '', 0, datetime('now'), 0, 0, 0, 0, 1, datetime('now'))
@@ -1489,8 +1487,7 @@ export default {
                     f.id,
                     u.id AS user_id,
                     u.username,
-                    u.bio,
-                    u.shirt_id
+                    u.bio
                 FROM friendships f
                 JOIN users u
                     ON u.id = CASE
