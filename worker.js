@@ -180,9 +180,9 @@ export default {
 
             const user = await env.DB
                 .prepare(`
-                    SELECT id, username, bio, visits, created_at,
+                    SELECT id, username, bio, created_at,
                            is_deleted, is_staff, is_moderator,
-                           is_banned, shirt_id, last_seen
+                           is_banned, last_seen
                     FROM users
                     WHERE id = ?
                 `)
