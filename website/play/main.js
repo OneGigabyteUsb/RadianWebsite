@@ -618,7 +618,7 @@ gltf.scene.traverse((obj) => {
 });
 
 const pantsMaterial = new THREE.MeshStandardMaterial({
-    map: sharedTextureLoader.load("./assets/shirts/RadianPantsTemplate.png")
+    map: sharedTextureLoader.load("/assets/shirts/RadianPantsTemplate.png")
 });
 
 gltf.scene.traverse((object) => {
