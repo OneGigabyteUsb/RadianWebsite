@@ -437,7 +437,7 @@ function loadMap(mapData) {
 
     if (mapData.spawn) {
         if (modelReady === true) {
-            gltf.scene.position.x = mapData.spawn.x;
+            .scene.position.x = mapData.spawn.x;
 			gltf.scene.position.y = mapData.spawn.y;
 			gltf.scene.position.z = mapData.spawn.z;
             velocityY = 0;
@@ -607,8 +607,6 @@ gltf.scene.traverse((obj) => {
         obj.castShadow = false;
     }
     if (obj.name === "T-shirt") {
-        // No shirt equipped yet by default -- equipShirt() below shows
-        // this and sets its texture once avatar data comes back.
         obj.material = new THREE.MeshStandardMaterial({ transparent: true });
         obj.visible = false;
         obj.receiveShadow = true;
@@ -617,6 +615,16 @@ gltf.scene.traverse((obj) => {
 
     obj.material.transparent = true;
     characterMeshes.push(obj);
+});
+
+const pantsMaterial = new THREE.MeshStandardMaterial({
+    map: textureLoader.load("./shirts/RadianPantsTemplate.png")
+});
+
+gltf.scene.traverse((object) => {
+    if (object.isMesh && (object.name === "Leg1" || object.name === "Right2")) {
+        object.material = pantsMaterial;
+    }
 });
 
 const AVATAR_PART_MESH_NAMES = {
