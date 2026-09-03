@@ -437,7 +437,7 @@ function loadMap(mapData) {
 
     if (mapData.spawn) {
         if (modelReady === true) {
-            .scene.position.x = mapData.spawn.x;
+            scene.position.x = mapData.spawn.x;
 			gltf.scene.position.y = mapData.spawn.y;
 			gltf.scene.position.z = mapData.spawn.z;
             velocityY = 0;
