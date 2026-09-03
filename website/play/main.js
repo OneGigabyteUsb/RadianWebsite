@@ -672,7 +672,7 @@ const shirtsMaterial = new THREE.MeshStandardMaterial({
 });
 
 gltf.scene.traverse((object) => {
-    if (object.isMesh && (object.name === "RightS_1" || object.name === "LeftS_1")) {
+    if (object.isMesh && (object.name === "RightS_1" || object.name === "LeftS_1" || object.name === "TorsoS_1")) {
 		object.material = new THREE.MeshStandardMaterial({ color: "#ffffff" });
         object.material = shirtsMaterial;
     }
