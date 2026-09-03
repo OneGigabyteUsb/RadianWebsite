@@ -644,7 +644,8 @@ function applyAvatarColors(root, colors) {
 }
 
 const pantsMaterial = new THREE.MeshStandardMaterial({
-    map: sharedTextureLoader.load("/assets/shirts/RadianPantsTemplate.png"), color: "#b3b3b3"
+    map: sharedTextureLoader.load("/assets/shirts/RadianPantsTemplate.png"),
+	color: "#b3b3b3"
 	
 });
 
