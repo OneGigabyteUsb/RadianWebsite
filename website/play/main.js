@@ -583,6 +583,7 @@ const gltf = await loader.loadAsync( 'models/oldmodel.gltf' );
 gltf.scene.traverse((obj) => {
     if (!obj.isMesh) return;
     obj.receiveShadow = true;
+	console.log(obj.name)
     obj.castShadow = true;
 
     if (obj.name === "Head_1") {
