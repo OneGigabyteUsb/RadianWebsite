@@ -643,14 +643,15 @@ function applyAvatarColors(root, colors) {
     });
 }
 
+
 const pantsMaterial = new THREE.MeshStandardMaterial({
     map: sharedTextureLoader.load("/assets/shirts/RadianPantsTemplate.png"),
 	color: "#b3b3b3"
-	
 });
 
 gltf.scene.traverse((object) => {
     if (object.isMesh && (object.name === "Leg1" || object.name === "Leg2")) {
+		object.material = new THREE.MeshStandardMaterial({ color: "#ffffff" });
         object.material = pantsMaterial;
     }
 });
