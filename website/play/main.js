@@ -643,7 +643,7 @@ function applyAvatarColors(root, colors) {
     });
 }
 
-const pantsTexture = sharedTextureLoader.load("/assets/shirts/RadianPantsTemplate.png");
+const pantsTexture = sharedTextureLoader.load("/assets/shirts/RadianJeans.png");
 pantsTexture.colorSpace = THREE.SRGBColorSpace;
 pantsTexture.flipY = false;
 
