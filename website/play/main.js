@@ -651,13 +651,14 @@ pantsTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
 
 const pantsMaterial = new THREE.MeshStandardMaterial({
     map: pantsTexture,
-    color: "#b3b3b3"
+    color: "#ffffff"
 });
 
 gltf.scene.traverse((object) => {
     if (object.isMesh && (object.name === "RightP" || object.name === "LeftP")) {
 		object.material = new THREE.MeshStandardMaterial({ color: "#ffffff" });
         object.material = pantsMaterial;
+		object.material.transparent = true;
     }
 });
 
@@ -668,7 +669,7 @@ shirtsTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
 
 const shirtsMaterial = new THREE.MeshStandardMaterial({
     map: shirtsTexture,
-    color: "#b3b3b3"
+    color: "#ffffff"
 });
 
 gltf.scene.traverse((object) => {
