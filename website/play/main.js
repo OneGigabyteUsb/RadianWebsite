@@ -646,6 +646,7 @@ function applyAvatarColors(root, colors) {
 const pantsTexture = sharedTextureLoader.load("/assets/shirts/RadianJeans.png");
 pantsTexture.colorSpace = THREE.SRGBColorSpace;
 pantsTexture.flipY = false;
+pantsTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
 
 const pantsMaterial = new THREE.MeshStandardMaterial({
     map: pantsTexture,
