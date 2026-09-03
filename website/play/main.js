@@ -661,6 +661,23 @@ gltf.scene.traverse((object) => {
     }
 });
 
+const shirtsTexture = sharedTextureLoader.load("/assets/shirts/RadianJeansTemplate.png");
+shirtsTexture.colorSpace = THREE.SRGBColorSpace;
+shirtsTexture.flipY = false;
+shirtsTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+
+const shirtsMaterial = new THREE.MeshStandardMaterial({
+    map: shirtsTexture,
+    color: "#b3b3b3"
+});
+
+gltf.scene.traverse((object) => {
+    if (object.isMesh && (object.name === "RightS_1" || object.name === "LeftS_1")) {
+		object.material = new THREE.MeshStandardMaterial({ color: "#ffffff" });
+        object.material = shirtsMaterial;
+    }
+});
+
 const itemsCatalogPromise = fetch('/api/items.json')
     .then(r => (r.ok ? r.json() : []))
     .catch(() => []);
