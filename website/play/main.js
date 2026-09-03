@@ -643,10 +643,13 @@ function applyAvatarColors(root, colors) {
     });
 }
 
+const pantsTexture = sharedTextureLoader.load("/assets/shirts/RadianPantsTemplate.png");
+pantsTexture.colorSpace = THREE.SRGBColorSpace;
+pantsTexture.flipY = false;
 
 const pantsMaterial = new THREE.MeshStandardMaterial({
-    map: sharedTextureLoader.load("/assets/shirts/RadianPantsTemplate.png"),
-	color: "#b3b3b3"
+    map: pantsTexture,
+    color: "#b3b3b3"
 });
 
 gltf.scene.traverse((object) => {
