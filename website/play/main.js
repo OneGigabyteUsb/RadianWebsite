@@ -622,7 +622,7 @@ const pantsMaterial = new THREE.MeshStandardMaterial({
 });
 
 gltf.scene.traverse((object) => {
-    if (object.isMesh && (object.name === "LeftLeg" || object.name === "RightLeg")) {
+    if (object.isMesh && (obj.name === "Leg1" || obj.name === "Leg2")) {
         object.material = pantsMaterial;
     }
 });
