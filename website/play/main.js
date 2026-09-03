@@ -617,16 +617,6 @@ gltf.scene.traverse((obj) => {
     characterMeshes.push(obj);
 });
 
-const pantsMaterial = new THREE.MeshStandardMaterial({
-    map: sharedTextureLoader.load("/assets/shirts/RadianPantsTemplate.png")
-});
-
-gltf.scene.traverse((object) => {
-    if (object.isMesh && (object.name === "Leg1" || object.name === "Leg2")) {
-        object.material = pantsMaterial;
-    }
-});
-
 const AVATAR_PART_MESH_NAMES = {
     head: ["Head_1"],
     torso: ["Torso_1"],
@@ -652,6 +642,17 @@ function applyAvatarColors(root, colors) {
         }
     });
 }
+
+const pantsMaterial = new THREE.MeshStandardMaterial({
+    map: sharedTextureLoader.load("/assets/shirts/RadianPantsTemplate.png"), color: "#b3b3b3"
+	
+});
+
+gltf.scene.traverse((object) => {
+    if (object.isMesh && (object.name === "Leg1" || object.name === "Leg2")) {
+        object.material = pantsMaterial;
+    }
+});
 
 const itemsCatalogPromise = fetch('/api/items.json')
     .then(r => (r.ok ? r.json() : []))
