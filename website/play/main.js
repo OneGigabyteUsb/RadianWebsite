@@ -775,6 +775,61 @@ async function equipHat(root, avatar) {
 }
 
 async function equipShirt(root, avatar) {
+    const RightMesh = root.getObjectByName("RightS_1");
+	const LeftMesh = root.getObjectByName("LeftS_1");
+	const TorsoMesh = root.getObjectByName("TorsoS_1");
+    if (!TorsoMesh) return;
+
+    if (!avatar || !avatar.accessories) {
+        RightMesh.visible = false;
+		LeftMesh.visible = false;
+		TorsoMesh.visible = false;
+        return;
+    }
+
+    const items = await itemsCatalogPromise;
+    const equippedIds = new Set(avatar.accessories.ids);
+    const shirtItem = items.find(item => item.type === "Shirt" && equippedIds.has(item.Id));
+
+    if (!shirtItem) {
+        RightMesh.visible = false;
+		LeftMesh.visible = false;
+		TorsoMesh.visible = false;
+        return;
+    }
+
+    if (!meshesWithOwnMaterial.has(shirtMesh)) {
+        shirtMesh.material = shirtMesh.material.clone();
+        meshesWithOwnMaterial.add(shirtMesh);
+    }
+
+    if (shirtItem.texture) {
+        try {
+            const tex = await sharedTextureLoader.loadAsync(shirtItem.texture);
+            tex.colorSpace = THREE.SRGBColorSpace;
+            tex.flipY = false;
+            RightMesh.material.map = tex;
+		    LeftMesh.material.map = tex;
+		    TorsoMesh.material.map = tex;
+			// i hate this
+            RightMesh.material.needsUpdate = true;
+		    LeftMesh.material.needsUpdate = true;
+		    TorsoMesh.material.needsUpdate = true;
+        } catch (err) {
+            console.warn(`[avatar] could not load shirt texture for item ${shirtItem.Name}`, err);
+            const tex = await sharedTextureLoader.loadAsync("/textures/Plastic.png");
+            tex.colorSpace = THREE.SRGBColorSpace;
+            tex.flipY = false;
+            RightMesh.visible = false;
+		    LeftMesh.visible = false;
+		    TorsoMesh.visible = false;
+        }
+    }
+
+    shirtMesh.visible = true;
+}
+
+async function equipTShirt(root, avatar) {
     const shirtMesh = root.getObjectByName("T-shirt");
     if (!shirtMesh) return;
 
@@ -865,7 +920,8 @@ fetch('/api/me/avatar', { credentials: 'include' })
     .then(avatar => {
         applyAvatarColors(gltf.scene, avatar.colors);
         equipHat(gltf.scene, avatar);
-        equipShirt(gltf.scene, avatar);
+        equipTShirt(gltf.scene, avatar);
+		equipShirt(gltf.scene, avatar)
     })
     .catch(() => console.warn('[avatar] could not load your avatar colors'));
 
@@ -903,7 +959,7 @@ function buildRemotePlayer(id) {
         .then(avatar => {
             applyAvatarColors(root, avatar.colors);
             equipHat(root, avatar);
-            equipShirt(root, avatar);
+            equipTShirt(root, avatar);
         })
         .catch(() => console.warn(`[avatar] could not load avatar colors for player ${id}`));
 
