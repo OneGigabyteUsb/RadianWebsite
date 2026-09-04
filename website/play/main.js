@@ -658,6 +658,8 @@ gltf.scene.traverse((object) => {
     if (object.isMesh && (object.name === "RightP" || object.name === "LeftP")) {
 		object.material = new THREE.MeshStandardMaterial({ color: "#ffffff" });
         object.material = pantsMaterial;
+        object.receiveShadow = true;
+        object.castShadow = false;
 		object.material.transparent = true;
     }
 });
@@ -674,8 +676,11 @@ const shirtsMaterial = new THREE.MeshStandardMaterial({
 
 gltf.scene.traverse((object) => {
     if (object.isMesh && (object.name === "RightS" || object.name === "LeftS" || object.name === "TorsoS")) {
+		object.material = new THREE.MeshStandardMaterial({ color: "#ffffff" });
         object.material = shirtsMaterial;
-        object.material.transparent = true;
+        object.receiveShadow = true;
+        object.castShadow = false;
+		object.material.transparent = true;
     }
 });
 
