@@ -661,7 +661,7 @@ gltf.scene.traverse((object) => {
     }
 });
 
-const shirtsTexture = sharedTextureLoader.load("/assets/shirts/RadianPantsTemplate.png");
+const shirtsTexture = sharedTextureLoader.load("/assets/shirts/RadianShirtTemplate.png");
 shirtsTexture.colorSpace = THREE.SRGBColorSpace;
 shirtsTexture.flipY = false;
 shirtsTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
