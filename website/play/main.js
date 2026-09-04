@@ -662,7 +662,7 @@ gltf.scene.traverse((object) => {
     }
 });
 
-const shirtsTexture = sharedTextureLoader.load("/assets/shirts/TransparentShirtTest.jpg");
+const shirtsTexture = sharedTextureLoader.load("/assets/shirts/TransparentShirtTest.png");
 shirtsTexture.colorSpace = THREE.SRGBColorSpace;
 shirtsTexture.flipY = false;
 shirtsTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
