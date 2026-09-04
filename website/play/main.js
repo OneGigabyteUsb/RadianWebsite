@@ -817,6 +817,10 @@ async function equipShirt(root, avatar) {
             RightMesh.material.needsUpdate = true;
 		    LeftMesh.material.needsUpdate = true;
 		    TorsoMesh.material.needsUpdate = true;
+			// i hate this more
+            RightMesh.material.transparent = true;
+		    LeftMesh.material.transparent = true;
+		    TorsoMesh.material.transparent = true;
         } catch (err) {
             console.warn(`[avatar] could not load shirt texture for item ${shirtItem.Name}`, err);
             const tex = await sharedTextureLoader.loadAsync("/textures/Plastic.png");
