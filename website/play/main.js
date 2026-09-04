@@ -822,17 +822,13 @@ async function equipShirt(root, avatar) {
 		    LeftMesh.material.transparent = true;
 		    TorsoMesh.material.transparent = true;
 			// i hate this more again
-			RightMesh.material.polygonOffset = true;
-            RightMesh.material.polygonOffsetFactor = -1;
-            RightMesh.material.polygonOffsetUnits = -1;
-			// i hate this more again
-			LeftMesh.material.polygonOffset = true;
-            LeftMesh.material.polygonOffsetFactor = -1;
-            LeftMesh.material.polygonOffsetUnits = -1;
-			// i hate this more again
-			TorsoMesh.material.polygonOffset = true;
-            TorsoMesh.material.polygonOffsetFactor = -1;
-            TorsoMesh.material.polygonOffsetUnits = -1;
+			RightMesh.material.depthWrite = false;
+			LeftMesh.material.depthWrite = false;
+			TorsoMesh.material.depthWrite = false;
+
+			RightMesh.material.needsUpdate = true;
+		    LeftMesh.material.needsUpdate = true;
+		    TorsoMesh.material.needsUpdate = true;
         } catch (err) {
             console.warn(`[avatar] could not load shirt texture for item ${shirtItem.Name}`, err);
             const tex = await sharedTextureLoader.loadAsync("/textures/Plastic.png");
