@@ -79,5 +79,14 @@
     "texture": "/assets/shirts/InvertedShirt.png",
     "type": "Shirt",
     "price": 0
+  },
+  {
+    "Id": 10,
+    "name": "Blue shirt",
+    "description": "Shirts and Shirts",
+    "model": "",
+    "texture": "/assets/shirts/TransparentShirtTest.png",
+    "type": "Shirt",
+    "price": 0
   }
 ]
