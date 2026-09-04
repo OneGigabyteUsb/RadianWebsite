@@ -835,6 +835,62 @@ async function equipShirt(root, avatar) {
 	TorsoMesh.visible = true;
 }
 
+async function equipPants(root, avatar) {
+    const RightMesh = root.getObjectByName("RightP");
+	const LeftMesh = root.getObjectByName("LeftP");
+    if (!LeftMesh) return;
+
+    if (!avatar || !avatar.accessories) {
+        RightMesh.visible = false;
+		LeftMesh.visible = false;
+
+        return;
+    }
+
+    const items = await itemsCatalogPromise;
+    const equippedIds = new Set(avatar.accessories.ids);
+    const shirtItem = items.find(item => item.type === "Pants" && equippedIds.has(item.Id));
+
+    if (!shirtItem) {
+        RightMesh.visible = false;
+		LeftMesh.visible = false;
+        return;
+    }
+
+    if (!meshesWithOwnMaterial.has(RightMesh || LeftMesh)) {
+		LeftMesh.material = LeftMesh.material.clone();
+		RightMesh.material = RightMesh.material.clone();
+        meshesWithOwnMaterial.add(RightMesh || LeftMesh);
+    }
+
+    if (shirtItem.texture) {
+        try {
+            const tex = await sharedTextureLoader.loadAsync(shirtItem.texture);
+            tex.colorSpace = THREE.SRGBColorSpace;
+            tex.flipY = false;
+
+			for (const mesh of [RightMesh, LeftMesh]) {
+				mesh.material.map = tex;
+				mesh.material.alphaTest = 0.5;
+				mesh.material.transparent = false;
+				mesh.material.depthWrite = true;
+				mesh.material.depthTest = true;
+				mesh.material.needsUpdate = true;
+			}
+        } catch (err) {
+            console.warn(`[avatar] could not load shirt texture for item ${shirtItem.Name}`, err);
+            const tex = await sharedTextureLoader.loadAsync("/textures/Plastic.png");
+            tex.colorSpace = THREE.SRGBColorSpace;
+            tex.flipY = false;
+            RightMesh.visible = false;
+		    LeftMesh.visible = false;
+        }
+    }
+	
+    RightMesh.visible = true;
+	LeftMesh.visible = true;
+}
+
 async function equipTShirt(root, avatar) {
     const shirtMesh = root.getObjectByName("T-shirt");
     if (!shirtMesh) return;
