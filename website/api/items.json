@@ -76,7 +76,7 @@
     "name": "Test Shirt",
     "description": "Shirts and Shirts",
     "model": "",
-    "texture": "/assets/shirts/RadianShirtTemplate.png",
+    "texture": "/assets/shirts/InvertedShirt.png",
     "type": "Shirt",
     "price": 0
   }
