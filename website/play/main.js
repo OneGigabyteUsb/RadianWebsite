@@ -662,7 +662,7 @@ gltf.scene.traverse((object) => {
     }
 });
 
-const shirtsTexture = sharedTextureLoader.load("/assets/shirts/TransparentShirtTest.png");
+const shirtsTexture = sharedTextureLoader.load("/assets/shirts/TransparentShirtTest.jpg");
 shirtsTexture.colorSpace = THREE.SRGBColorSpace;
 shirtsTexture.flipY = false;
 shirtsTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
@@ -673,10 +673,9 @@ const shirtsMaterial = new THREE.MeshStandardMaterial({
 });
 
 gltf.scene.traverse((object) => {
-    if (object.isMesh && (object.name === "RightS_1" || object.name === "LeftS_1" || object.name === "TorsoS_1")) {
-		object.material = new THREE.MeshStandardMaterial({ color: "#ffffff" });
+    if (object.isMesh && (object.name === "RightS" || object.name === "LeftS" || object.name === "TorsoS")) {
         object.material = shirtsMaterial;
-		object.material.transparent = true
+        object.material.transparent = true;
     }
 });
 
