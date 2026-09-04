@@ -88,5 +88,14 @@
     "texture": "/assets/shirts/TransparentShirtTest.png",
     "type": "Shirt",
     "price": 0
+  },
+  {
+    "Id": 11,
+    "name": "Jeans",
+    "description": "Pants and Pants",
+    "model": "",
+    "texture": "/assets/shirts/TransparentShirtTest.png",
+    "type": "Pants",
+    "price": 0
   }
 ]
