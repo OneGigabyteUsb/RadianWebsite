@@ -70,5 +70,14 @@
     "texture": "",
     "type": "Hat",
     "price": 0
+  },
+  {
+    "Id": 9,
+    "name": "Test Shirt",
+    "description": "Shirts and Shirts",
+    "model": "",
+    "texture": "/assets/shirts/RadianShirtTemplate.png",
+    "type": "Shirt",
+    "price": 0
   }
 ]
