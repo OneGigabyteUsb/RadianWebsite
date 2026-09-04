@@ -658,13 +658,13 @@ gltf.scene.traverse((object) => {
     if (object.isMesh && (object.name === "RightP" || object.name === "LeftP")) {
 		object.material = new THREE.MeshStandardMaterial({ color: "#ffffff" });
         object.material = pantsMaterial;
-        object.receiveShadow = true;
+        object.receiveShadow = false;
         object.castShadow = false;
 		object.material.transparent = true;
     }
 });
 
-const shirtsTexture = sharedTextureLoader.load("/assets/shirts/TransparentShirtTest.png");
+const shirtsTexture = sharedTextureLoader.load("/assets/shirts/RadianPantsTemplate.png");
 shirtsTexture.colorSpace = THREE.SRGBColorSpace;
 shirtsTexture.flipY = false;
 shirtsTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
@@ -678,7 +678,7 @@ gltf.scene.traverse((object) => {
     if (object.isMesh && (object.name === "RightS" || object.name === "LeftS" || object.name === "TorsoS")) {
 		object.material = new THREE.MeshStandardMaterial({ color: "#ffffff" });
         object.material = shirtsMaterial;
-        object.receiveShadow = true;
+        object.receiveShadow = false;
         object.castShadow = false;
 		object.material.transparent = true;
     }
