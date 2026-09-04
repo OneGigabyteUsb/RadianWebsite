@@ -676,6 +676,7 @@ gltf.scene.traverse((object) => {
     if (object.isMesh && (object.name === "RightS_1" || object.name === "LeftS_1" || object.name === "TorsoS_1")) {
 		object.material = new THREE.MeshStandardMaterial({ color: "#ffffff" });
         object.material = shirtsMaterial;
+		object.material.transparent = true
     }
 });
 
