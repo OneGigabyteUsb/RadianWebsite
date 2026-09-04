@@ -825,6 +825,10 @@ async function equipShirt(root, avatar) {
 			RightMesh.material.depthWrite = false;
 			LeftMesh.material.depthWrite = false;
 			TorsoMesh.material.depthWrite = false;
+			// wa
+			RightMesh.material.depthTest = false;
+			LeftMesh.material.depthTest = false;
+			TorsoMesh.material.depthTest = false;
 
 			RightMesh.material.needsUpdate = true;
 		    LeftMesh.material.needsUpdate = true;
