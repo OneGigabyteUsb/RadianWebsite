@@ -810,29 +810,15 @@ async function equipShirt(root, avatar) {
             const tex = await sharedTextureLoader.loadAsync(shirtItem.texture);
             tex.colorSpace = THREE.SRGBColorSpace;
             tex.flipY = false;
-            RightMesh.material.map = tex;
-		    LeftMesh.material.map = tex;
-		    TorsoMesh.material.map = tex;
-			// i hate this
-            RightMesh.material.needsUpdate = true;
-		    LeftMesh.material.needsUpdate = true;
-		    TorsoMesh.material.needsUpdate = true;
-			// i hate this more
-            RightMesh.material.transparent = true;
-		    LeftMesh.material.transparent = true;
-		    TorsoMesh.material.transparent = true;
-			// i hate this more again
-			RightMesh.material.depthWrite = false;
-			LeftMesh.material.depthWrite = false;
-			TorsoMesh.material.depthWrite = false;
-			// wa
-			RightMesh.material.depthTest = false;
-			LeftMesh.material.depthTest = false;
-			TorsoMesh.material.depthTest = false;
 
-			RightMesh.material.needsUpdate = true;
-		    LeftMesh.material.needsUpdate = true;
-		    TorsoMesh.material.needsUpdate = true;
+			for (const mesh of [RightMesh, LeftMesh, TorsoMesh]) {
+				mesh.material.map = tex;
+				mesh.material.alphaTest = 0.5;
+				mesh.material.transparent = false;
+				mesh.material.depthWrite = true;
+				mesh.material.depthTest = true;
+				mesh.material.needsUpdate = true;
+			}
         } catch (err) {
             console.warn(`[avatar] could not load shirt texture for item ${shirtItem.Name}`, err);
             const tex = await sharedTextureLoader.loadAsync("/textures/Plastic.png");
