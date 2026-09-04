@@ -798,9 +798,11 @@ async function equipShirt(root, avatar) {
         return;
     }
 
-    if (!meshesWithOwnMaterial.has(shirtMesh)) {
-        shirtMesh.material = shirtMesh.material.clone();
-        meshesWithOwnMaterial.add(shirtMesh);
+    if (!meshesWithOwnMaterial.has(RightMesh || LeftMesh || TorsoMesh)) {
+        TorsoMesh.material = TorsoMesh.material.clone();
+		LeftMesh.material = LeftMesh.material.clone();
+		RightMesh.material = RightMesh.material.clone();
+        meshesWithOwnMaterial.add(RightMesh || LeftMesh || TorsoMesh);
     }
 
     if (shirtItem.texture) {
@@ -825,8 +827,10 @@ async function equipShirt(root, avatar) {
 		    TorsoMesh.visible = false;
         }
     }
-
-    shirtMesh.visible = true;
+	
+    RightMesh.visible = true;
+	LeftMesh.visible = true;
+	TorsoMesh.visible = true;
 }
 
 async function equipTShirt(root, avatar) {
