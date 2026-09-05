@@ -666,14 +666,6 @@ gltf.scene.traverse((object) => {
     }
 });
 
-const shirtsTexture = loader.load("/textures/empty.png");
-shirtsTexture.flipY = false;
-
-const shirtsMaterial = new THREE.MeshStandardMaterial({
-    map: shirtsTexture,
-    color: "#ffffff"
-});
-
 gltf.scene.traverse((object) => {
     if (object.isMesh && (object.name === "LeftS_1" || object.name === "RightS_1" || object.name === "TorsoS_1")) {
 		object.material = new THREE.MeshStandardMaterial({ color: "#ffffff" });
