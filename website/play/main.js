@@ -692,6 +692,12 @@ gltf.scene.traverse((object) => {
     if (object.isMesh && (object.name === "T-shirt")) {
 		object.material = new THREE.MeshStandardMaterial({ color: "#ffffff" });
         object.material = tshirt23MAT;
+        object.material.transparent = true;
+		object.material.alphaTest = 0.5;
+		object.material.transparent = false;
+		object.material.depthWrite = true;
+		object.material.depthTest = true;
+		object.material.needsUpdate = true;
     }
 });
 
