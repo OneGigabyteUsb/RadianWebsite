@@ -651,7 +651,7 @@ pantsTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
 const pantsMaterial = new THREE.MeshStandardMaterial({
     map: pantsTexture,
     color: "#ffffff"
-});
+}); 
 
 gltf.scene.traverse((object) => {
     if (object.isMesh && (object.name === "RightP" || object.name === "LeftP")) {
