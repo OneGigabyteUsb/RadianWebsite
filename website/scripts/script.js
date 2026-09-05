@@ -674,7 +674,7 @@ function renderCatalogGrid(items, equippedIds, onEquipChange) {
         return `<p class="catalog-empty">No items in the catalog yet.</p>`;
     }
 
-    return items.slice(0, 10).map(item => {
+    return items.map(item => {
         const isEquipped = equippedIds && equippedIds.has(item.Id);
         const clickable = equippedIds !== null;
         return `
