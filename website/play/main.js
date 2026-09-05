@@ -984,6 +984,7 @@ fetch('/api/me/avatar', { credentials: 'include' })
         equipHat(gltf.scene, avatar);
         equipTShirt(gltf.scene, avatar);
 		equipShirt(gltf.scene, avatar)
+		equipPants(gltf.scene, avatar)
     })
     .catch(() => console.warn('[avatar] could not load your avatar colors'));
 
