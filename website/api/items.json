@@ -85,7 +85,7 @@
     "name": "Blue shirt",
     "description": "Shirts and Shirts",
     "model": "",
-    "texture": "/assets/shirts/TransparentShirtTest.png",
+    "texture": "/assets/shirts/RadianBlueFlannel.png",
     "type": "Shirt",
     "price": 0
   },
