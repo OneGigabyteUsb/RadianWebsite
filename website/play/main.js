@@ -644,7 +644,7 @@ function applyAvatarColors(root, colors) {
     });
 }
 
-const pantsTexture = sharedTextureLoader.load("./textures/empty.png");
+const pantsTexture = sharedTextureLoader.load("/textures/empty.png");
 pantsTexture.flipY = false;
 pantsTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
 
@@ -666,7 +666,7 @@ gltf.scene.traverse((object) => {
     }
 });
 
-const shirtsTexture = loader.load("./textures/empty.png");
+const shirtsTexture = loader.load("/textures/empty.png");
 shirtsTexture.flipY = false;
 
 const shirtsMaterial = new THREE.MeshStandardMaterial({
