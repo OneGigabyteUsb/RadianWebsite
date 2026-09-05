@@ -91,10 +91,10 @@
   },
   {
     "Id": 11,
-    "name": "Jeans",
+    "name": "Black Jeans",
     "description": "Pants and Pants",
     "model": "",
-    "texture": "/assets/shirts/TransparentShirtTest.png",
+    "texture": "/assets/shirts/BlackJeans.png",
     "type": "Pants",
     "price": 0
   }
