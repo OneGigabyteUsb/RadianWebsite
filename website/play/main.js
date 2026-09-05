@@ -644,7 +644,7 @@ function applyAvatarColors(root, colors) {
     });
 }
 
-const pantsTexture = sharedTextureLoader.load("/assets/shirts/RadianJeans.png");
+const pantsTexture = sharedTextureLoader.load("./textures/empty.png");
 pantsTexture.colorSpace = THREE.SRGBColorSpace;
 pantsTexture.flipY = false;
 pantsTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
@@ -658,13 +658,18 @@ gltf.scene.traverse((object) => {
     if (object.isMesh && (object.name === "RightP" || object.name === "LeftP")) {
 		object.material = new THREE.MeshStandardMaterial({ color: "#ffffff" });
         object.material = pantsMaterial;
+        object.material.transparent = true;
+		object.material.alphaTest = 0.5;
+		object.material.transparent = false;
+		object.material.depthWrite = true;
+		object.material.depthTest = true;
+		object.material.needsUpdate = true;
     }
 });
 
-const shirtsTexture = sharedTextureLoader.load("textures/empty.png");
+const shirtsTexture = loader.load("./textures/empty.png");
 shirtsTexture.colorSpace = THREE.SRGBColorSpace;
 shirtsTexture.flipY = false;
-shirtsTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
 
 const shirtsMaterial = new THREE.MeshStandardMaterial({
     map: shirtsTexture,
@@ -675,6 +680,12 @@ gltf.scene.traverse((object) => {
     if (object.isMesh && (object.name === "LeftS_1" || object.name === "RightS_1" || object.name === "TorsoS_1")) {
 		object.material = new THREE.MeshStandardMaterial({ color: "#ffffff" });
         object.material = shirtsMaterial;
+        object.material.transparent = true;
+		object.material.alphaTest = 0.5;
+		object.material.transparent = false;
+		object.material.depthWrite = true;
+		object.material.depthTest = true;
+		object.material.needsUpdate = true;
     }
 });
 
