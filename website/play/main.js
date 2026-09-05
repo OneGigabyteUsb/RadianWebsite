@@ -679,7 +679,7 @@ gltf.scene.traverse((object) => {
     }
 });
 
-let TShirt23 = sharedTextureLoader.load("t-shirts/Hoodie.png");
+let TShirt23 = sharedTextureLoader.load("/textures/empty.png");
 TShirt23.colorSpace = THREE.SRGBColorSpace;
 TShirt23.flipY = false;
 
