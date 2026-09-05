@@ -555,7 +555,7 @@ sun.castShadow = true;
 sun.shadow.normalBias = 0.02;
 sun.shadow.camera = new THREE.OrthographicCamera(-50, 50, 50, -50, 0.5, 500);
 sun.shadow.mapSize.set(2048, 2048);
-sun.shadow.camera.left = -30;
+sun.shadow.camera. = -30;
 sun.shadow.camera.right = 30;
 sun.shadow.camera.top = 30;
 sun.shadow.camera.bottom = -30;
@@ -661,7 +661,7 @@ gltf.scene.traverse((object) => {
     }
 });
 
-const shirtsTexture = sharedTextureLoader.load("/assets/shirts/RadianShirtTemplate.png");
+const shirtsTexture = sharedTextureLoader.load("textures/empty.png");
 shirtsTexture.colorSpace = THREE.SRGBColorSpace;
 shirtsTexture.flipY = false;
 shirtsTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
