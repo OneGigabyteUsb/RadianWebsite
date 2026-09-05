@@ -1046,6 +1046,8 @@ function buildRemotePlayer(id) {
             applyAvatarColors(root, avatar.colors);
             equipHat(root, avatar);
             equipTShirt(root, avatar);
+		    equipShirt(root, avatar)
+		    equipPants(root, avatar)
         })
         .catch(() => console.warn(`[avatar] could not load avatar colors for player ${id}`));
 
