@@ -679,6 +679,22 @@ gltf.scene.traverse((object) => {
     }
 });
 
+let TShirt23 = sharedTextureLoader.load("t-shirts/Hoodie.png");
+TShirt23.colorSpace = THREE.SRGBColorSpace;
+TShirt23.flipY = false;
+
+const tshirt23MAT = new THREE.MeshStandardMaterial({
+    map: TShirt23,
+    color: "#ffffff"
+}); 
+
+gltf.scene.traverse((object) => {
+    if (object.isMesh && (object.name === "T-shirt")) {
+		object.material = new THREE.MeshStandardMaterial({ color: "#ffffff" });
+        object.material = tshirt23MAT;
+    }
+});
+
 const itemsCatalogPromise = fetch('/api/items.json')
     .then(r => (r.ok ? r.json() : []))
     .catch(() => []);
