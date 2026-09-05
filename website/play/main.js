@@ -645,7 +645,6 @@ function applyAvatarColors(root, colors) {
 }
 
 const pantsTexture = sharedTextureLoader.load("./textures/empty.png");
-pantsTexture.colorSpace = THREE.SRGBColorSpace;
 pantsTexture.flipY = false;
 pantsTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
 
@@ -668,7 +667,6 @@ gltf.scene.traverse((object) => {
 });
 
 const shirtsTexture = loader.load("./textures/empty.png");
-shirtsTexture.colorSpace = THREE.SRGBColorSpace;
 shirtsTexture.flipY = false;
 
 const shirtsMaterial = new THREE.MeshStandardMaterial({
