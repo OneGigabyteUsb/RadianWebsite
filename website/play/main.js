@@ -11,11 +11,14 @@ import {
 THREE.Cache.enabled = true;
 const scene = new THREE.Scene()
 
+//=====UGC Object Hierarchy=====\\
+// Default parent for Parts, like Roblox's Workspace.
 const Workspace = new Place({ name: "Workspace" });
 const GameScripts = new ServerScripts({});
 window.Workspace = Workspace;
 window.GameScripts = GameScripts;
 
+//=====ServerPath=====\\
 function getServerIdFromPath() {
     const parts = window.location.pathname.split('/').filter(Boolean);
     if (parts.length >= 2 && parts[0] === 'play') return parts[1];
@@ -26,6 +29,7 @@ function getServerIdFromQuery() {
 }
 const GAME_ID = getServerIdFromPath() || getServerIdFromQuery() || document.body.dataset.gameId || 'main';
 
+//=====Variables=====\\
 let velocityY = 0;
 const gravity = -0.03;
 let isClimbing = false;
@@ -77,6 +81,7 @@ const UP_AXIS = new THREE.Vector3(0, 1, 0);
 const heightOffset = 2.7;
 let targetRotationY;
 
+// Makes character turning speed the same on any refresh rate.
 const ROTATION_SMOOTHING = 0.15;
 function frameIndependentLerp(factor, dt) {
     return 1 - Math.pow(1 - factor, dt);
@@ -90,6 +95,7 @@ let forwardZ;
 let rightX;
 let rightZ;
 
+//=====Html Elements=====\\
 const menuButton = document.getElementById('menuButton');
 const chatButton = document.getElementById('chatButton');
 const emoteButton = document.getElementById('emoteButton');
@@ -166,11 +172,16 @@ emoteButton.addEventListener('click', function (event) {
 	console.log('Emote... does nothing >:3');
 });
 
+
+//=====Chat Messages=====\\
+// Add your own words below (lowercase, whole-word match).
 const bannedWords = [
     "fuck", "shit", "bitch", "bastard", "cunt", "piss", "slut", "whore", "ass", "hitler",
     "faggot", "retard", "nigger", "nigga", "asshole", "cock", "dick", "motherfucker", "dickbeaters", "cocksucker", "asscracker", "dickmonger", "cunt", "assjacker", "bullshit", "twat"
 ];
 
+// Allows separator "noise" (spaces, underscores, dashes, dots) between
+// letters, so "f_u_c_k" / "f u c k" still get caught, not just "fuck".
 function buildBannedWordPattern(word) {
 	const letters = word.split('').map(c => c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
 	const gap = '[\\s_\\-.]*';
@@ -209,29 +220,36 @@ function appendChatMessage(username, text) {
 	chatLog.scrollTop = chatLog.scrollHeight;
 }
 
+//=====Player Stuff=====\\
 let JumpPower = 0.54;
 let WalkSpeed = -0.7;
 let spawn = new THREE.Vector3();
 
+//=====Movement feel (accel/friction model, coyote time, jump buffer)=====\\
+// Velocity ramps up/down instead of snapping to max speed.
 let velocityX = 0;
 let velocityZ = 0;
-const groundAccel = 2;
-const groundFriction = 0.75;
-const airAccel = 0.22;
-const airFriction = 0.02;
+const groundAccel = 2;   // ground speed ramp-up rate
+const groundFriction = 0.75; // ground stop speed (0-1, higher = snappier)
+const airAccel = 0.22;     // air control strength
+const airFriction = 0.02;  // air momentum loss (low = keeps speed through jumps)
 
+// Coyote time: jump still works briefly after leaving a ledge.
+// Jump buffer: early jump press still registers on landing.
 let coyoteTimer = 999;
 let jumpBufferTimer = 999;
-const COYOTE_TIME = 9;
-const JUMP_BUFFER_TIME = 9;
+const COYOTE_TIME = 9;      // ~0.15s at 60fps
+const JUMP_BUFFER_TIME = 9; // ~0.15s at 60fps
 
+// Sprint: held key, only takes effect on ground.
 let isSprinting = false;
-const sprintMultiplier = 1.3;
+const sprintMultiplier = 1.3; // top speed while sprinting = groundSpeed * this
 
-const airMaxSpeedMultiplier = 0.35;
+// Air speed cap: ground cap, or current speed if faster (keeps momentum).
+const airMaxSpeedMultiplier = 0.35; // baseline air cap vs ground cap
 
-function SetSpawn(item,result,remaining) {
-   spawn = new THREE.Vector3(item,result,remaining);
+function SetSpawn(x,y,z) {
+   spawn = new THREE.Vector3(x,y,z);
 }
 
 const healthBar = document.getElementById("health-bar");
@@ -243,7 +261,7 @@ camera.rotation.order = 'YXZ';
 let theta = 0;
 let phi = 0;
 let distance = 8;
-let sensitivity = 0.0032;
+let sensitivity = 0.0032; // was 0.007, too fast
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 const FIRST_PERSON_DISTANCE = 1.2;
@@ -255,8 +273,9 @@ const cameraRaycaster = new THREE.Raycaster();
 const cameraPivot = new THREE.Vector3();
 const cameraDir = new THREE.Vector3();
 
+
 let isDragging = false;
-let previousMousePosition = { item: 0, result: 0 };
+let previousMousePosition = { x: 0, y: 0 };
 
 const listener = new THREE.AudioListener();
 camera.add(listener);
@@ -267,9 +286,9 @@ class Sound extends BasicClass {
     constructor(data) {
        super(data);
 
-       this.item = data.item ?? 0;
-       this.result = data.result ?? 0;
-       this.remaining = data.remaining ?? 0;
+       this.x = data.x ?? 0;
+       this.y = data.y ?? 0;
+       this.z = data.z ?? 0;
 
        this.Sound = data.sound ?? "sounds/test.wav";
        this.volume = data.volume ?? 0.5;
@@ -278,7 +297,7 @@ class Sound extends BasicClass {
     Play() {
         const sound = new THREE.PositionalAudio(listener);
         const audioLoader = new THREE.AudioLoader();
-        sound.position.set(this.item, this.result, this.remaining);
+        sound.position.set(this.x, this.y, this.z);
 
         audioLoader.load(this.Sound, (buffer) => {
             sound.setBuffer(buffer);
@@ -299,9 +318,9 @@ function getOBBAxes(obb, out) {
 
 function projectedRadius(obb, axes, axis) {
     return (
-        obb.halfSize.item * Math.abs(axis.dot(axes[0])) +
-        obb.halfSize.result * Math.abs(axis.dot(axes[1])) +
-        obb.halfSize.remaining * Math.abs(axis.dot(axes[2]))
+        obb.halfSize.x * Math.abs(axis.dot(axes[0])) +
+        obb.halfSize.y * Math.abs(axis.dot(axes[1])) +
+        obb.halfSize.z * Math.abs(axis.dot(axes[2]))
     );
 }
 
@@ -318,12 +337,12 @@ function resolveOBBOverlap(a, b) {
     getOBBAxes(b, _axesB);
 
     let axisCount = 0;
-    for (let counter = 0; counter < 3; counter++) _testAxes[axisCount++].copy(_axesA[counter]);
-    for (let counter = 0; counter < 3; counter++) _testAxes[axisCount++].copy(_axesB[counter]);
-    for (let counter = 0; counter < 3; counter++) {
-        for (let col = 0; col < 3; col++) {
+    for (let i = 0; i < 3; i++) _testAxes[axisCount++].copy(_axesA[i]);
+    for (let i = 0; i < 3; i++) _testAxes[axisCount++].copy(_axesB[i]);
+    for (let i = 0; i < 3; i++) {
+        for (let j = 0; j < 3; j++) {
             const cross = _testAxes[axisCount];
-            cross.crossVectors(_axesA[counter], _axesB[col]);
+            cross.crossVectors(_axesA[i], _axesB[j]);
             if (cross.lengthSq() > 1e-8) {
                 cross.normalize();
                 axisCount++;
@@ -336,8 +355,8 @@ function resolveOBBOverlap(a, b) {
     let minOverlap = Infinity;
     let found = false;
 
-    for (let row = 0; row < axisCount; row++) {
-        const axis = _testAxes[row];
+    for (let k = 0; k < axisCount; k++) {
+        const axis = _testAxes[k];
         const rA = projectedRadius(a, _axesA, axis);
         const rB = projectedRadius(b, _axesB, axis);
         const dist = Math.abs(_centerDelta.dot(axis));
@@ -360,10 +379,10 @@ function resolveOBBOverlap(a, b) {
 }
 
 const renderer = new THREE.WebGLRenderer({ antialias: true })
-
-renderer.setPixelRatio(Math.minimum(window.devicePixelRatio, 1.5));
+// renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap; //PCFShadowMap;
 renderer.setSize(window.innerWidth, window.innerHeight)
 document.body.appendChild(renderer.domElement)
 
@@ -388,12 +407,13 @@ function clearMap() {
     mapScripts.forEach(script => script.destroy());
     mapScripts = [];
 
+    // Drop only the Parts we own -- leave any other UGC objects alone.
     Workspace.children = Workspace.children.filter(child => !(child instanceof Part));
 }
 
 function loadMap(mapData) {
     clearMap();
-
+ 
     (mapData.parts || []).forEach(partDef => {
         const part = new Part({ parent: "Workspace", ...partDef });
         part.addTo(scene);
@@ -409,7 +429,7 @@ function loadMap(mapData) {
         const script = new Script({ parent: "ServerScripts", ...scriptDef });
         mapScripts.push(script);
     });
-
+ 
     currentMapData = mapData;
 	console.log(mapData.spawn)
 
@@ -417,9 +437,9 @@ function loadMap(mapData) {
 
     if (mapData.spawn) {
         if (modelReady === true) {
-            scene.position.item = mapData.spawn.item;
-			gltf.scene.position.result = mapData.spawn.result;
-			gltf.scene.position.remaining = mapData.spawn.remaining;
+            scene.position.x = mapData.spawn.x;
+			gltf.scene.position.y = mapData.spawn.y;
+			gltf.scene.position.z = mapData.spawn.z;
             velocityY = 0;
         } else {
             pendingSpawn = mapData.spawn;
@@ -449,12 +469,12 @@ function serializeCurrentMap(name, author) {
         author: author || '',
         background: currentMapData ? currentMapData.background : undefined,
         spawn: (modelReady && gltf.scene)
-            ? { item: gltf.scene.position.item, result: gltf.scene.position.result, remaining: gltf.scene.position.remaining }
-            : (currentMapData && currentMapData.spawn) || { item: 0, result: 0, remaining: 0.9 },
+            ? { x: gltf.scene.position.x, y: gltf.scene.position.y, z: gltf.scene.position.z }
+            : (currentMapData && currentMapData.spawn) || { x: 0, y: 0, z: 0.9 },
         parts: activeParts.map(part => part.def),
         lights: mapLights.map(light => ({
             name: light.name, parent: light.parent,
-            item: light.item, result: light.result, remaining: light.remaining,
+            x: light.x, y: light.y, z: light.z,
             intensity: light.intensity, color: light.color, CastShadow: light.CastShadow
         })),
         scripts: mapScripts.map(script => ({
@@ -472,11 +492,11 @@ scene.add(ambientLight)
 
 const defaultMap = {
     name: "Default",
-    spawn: { item: 0, result: 0, remaining: 0.9 },
+    spawn: { x: 0, y: 0, z: 0.9 },
     parts: [
-        { item: 0, result: -0.5, remaining: 0, sx: 60, sy: 1, sz: 60, color: "#5cb85c" },
-        { item: 10, result: 2, remaining: -10, sx: 10, sy: 4, sz: 10, color: "#6e6e6e" },
-        { item: 0, result: 0.5, remaining: 0, sx: 1, sy: 1, sz: 1, Siting: true, color: "#304173" }
+        { x: 0, y: -0.5, z: 0, sx: 60, sy: 1, sz: 60, color: "#5cb85c" },
+        { x: 10, y: 2, z: -10, sx: 10, sy: 4, sz: 10, color: "#6e6e6e" },
+        { x: 0, y: 0.5, z: 0, sx: 1, sy: 1, sz: 1, Siting: true, color: "#304173" }
     ]
 };
 
@@ -490,9 +510,9 @@ async function loadMapForCurrentGame() {
     }
 
     try {
-        const answer = await fetch('/api/games.json');
-        if (!answer.ok) throw new Error(`games.json fetch failed: ${answer.status}`);
-        const games = await answer.json();
+        const res = await fetch('/api/games.json');
+        if (!res.ok) throw new Error(`games.json fetch failed: ${res.status}`);
+        const games = await res.json();
 
         const game = games.find(g => String(g.Id) === String(GAME_ID));
         if (!game) throw new Error(`No game with id ${GAME_ID} in the catalog`);
@@ -506,6 +526,24 @@ async function loadMapForCurrentGame() {
 }
 
 await loadMapForCurrentGame();
+
+
+//const floor = new CreatePart({ x: 0, y: -0.5, z: 0, sx: 60, sy: 1, sz: 60, color: "#5cb85c" });
+//floor.addTo(scene);
+
+//const wall = new CreatePart({
+   //x: 10, 
+   //y: 2, 
+   //z: -10, 
+   //sx: 10, 
+   //sy: 4, 
+   //sz: 10, 
+   //color: "#6e6e6e"
+//});
+//wall.addTo(scene);
+
+//const cube2 = new CreatePart({ x: 0, y: 0.5, z: 0, sx: 1, sy: 1, sz: 1, color: "#304173" });
+//cube2.addTo(scene);
 
 const hemi = new THREE.HemisphereLight('#9FB4D5', '#2E2E2E', 0.9);
 hemi.position.set(30, 40, 20);
@@ -613,7 +651,7 @@ pantsTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
 const pantsMaterial = new THREE.MeshStandardMaterial({
     map: pantsTexture,
     color: "#ffffff"
-});
+}); 
 
 gltf.scene.traverse((object) => {
     if (object.isMesh && (object.name === "RightP" || object.name === "LeftP")) {
@@ -648,7 +686,7 @@ TShirt23.flipY = false;
 const tshirt23MAT = new THREE.MeshStandardMaterial({
     map: TShirt23,
     color: "#ffffff"
-});
+}); 
 
 gltf.scene.traverse((object) => {
     if (object.isMesh && (object.name === "T-shirt")) {
@@ -667,19 +705,19 @@ const itemsCatalogPromise = fetch('/api/items.json')
     .then(r => (r.ok ? r.json() : []))
     .catch(() => []);
 
-const equippedHatsByRoot = new WeakMap();
+const equippedHatsByRoot = new WeakMap(); // root -> array of hat groups
 
 function findHeadBone(root) {
     let headBone = null;
     root.traverse((obj) => {
         if (headBone || !obj.isSkinnedMesh || !obj.skeleton) return;
-        headBone = obj.skeleton.bones.find(b => /head/counter.test(b.name)) || null;
+        headBone = obj.skeleton.bones.find(b => /head/i.test(b.name)) || null;
     });
     return headBone;
 }
 
 const HAT_BONE_Y_OFFSET = 0.18;
-const HAT_STACK_SPACING = 0.05;
+const HAT_STACK_SPACING = 0.05; // extra height added per stacked hat so they don't overlap
 
 async function equipHat(root, avatar) {
     if (!avatar || !avatar.accessories) return;
@@ -687,6 +725,7 @@ async function equipHat(root, avatar) {
     const equippedIds = new Set(avatar.accessories.ids);
     const hatItems = items.filter(item => item.type === "Hat" && equippedIds.has(item.Id));
 
+    // Remove any previously equipped hats before adding the new set.
     const previousHats = equippedHatsByRoot.get(root);
     if (previousHats) {
         for (const group of previousHats) group.parent?.remove(group);
@@ -696,8 +735,8 @@ async function equipHat(root, avatar) {
 
     const newHatGroups = [];
 
-    for (let counter = 0; counter < hatItems.length; counter++) {
-        const hatItem = hatItems[counter];
+    for (let i = 0; i < hatItems.length; i++) {
+        const hatItem = hatItems[i];
         if (!hatItem.model) continue;
 
         let hat;
@@ -727,10 +766,13 @@ async function equipHat(root, avatar) {
         const hatGroup = new THREE.Group();
         hatGroup.add(hat);
 
-        const stackOffset = HAT_BONE_Y_OFFSET + counter * HAT_STACK_SPACING;
+        // Each stacked hat sits a bit higher than the last so multiple
+        // hats don't render on top of each other at the same spot.
+        const stackOffset = HAT_BONE_Y_OFFSET + i * HAT_STACK_SPACING;
 
         const headBone = findHeadBone(root);
         if (headBone) {
+            // Bone-local space: no geometry to measure, just a tuned offset.
             hatGroup.position.set(0, stackOffset, 0);
             headBone.add(hatGroup);
         } else {
@@ -739,13 +781,13 @@ async function equipHat(root, avatar) {
                 headMesh.geometry.computeBoundingBox();
                 const box = headMesh.geometry.boundingBox;
                 hatGroup.position.set(
-                    (box.minimum.item + box.largest.item) / 2,
-                    box.largest.result + counter * HAT_STACK_SPACING,
-                    (box.minimum.remaining + box.largest.remaining) / 2
+                    (box.min.x + box.max.x) / 2,
+                    box.max.y + i * HAT_STACK_SPACING,
+                    (box.min.z + box.max.z) / 2
                 );
                 headMesh.add(hatGroup);
             } else {
-                root.add(hatGroup);
+                root.add(hatGroup); // last resort, sits at the model's origin
             }
         }
 
@@ -810,7 +852,7 @@ async function equipShirt(root, avatar) {
 		    TorsoMesh.visible = false;
         }
     }
-
+	
     RightMesh.visible = true;
 	LeftMesh.visible = true;
 	TorsoMesh.visible = true;
@@ -867,7 +909,7 @@ async function equipPants(root, avatar) {
 		    LeftMesh.visible = false;
         }
     }
-
+	
     RightMesh.visible = true;
 	LeftMesh.visible = true;
 }
@@ -916,6 +958,8 @@ async function equipTShirt(root, avatar) {
     shirtMesh.visible = true;
 }
 
+//---Sounds---\\\
+
 const globalSound = new THREE.Audio(listener);
 
 const audioLoader = new THREE.AudioLoader();
@@ -950,8 +994,10 @@ if (gltf.animations && gltf.animations.length > 0) {
     }
 }
 
-gltf.scene.rotation.result = Math.PI;
-gltf.scene.position.remaining = 0.9;
+//---Thingy---\\\
+
+gltf.scene.rotation.y = Math.PI;
+gltf.scene.position.z = 0.9;
 scene.add( gltf.scene );
 
 fetch('/api/me/avatar', { credentials: 'include' })
@@ -963,17 +1009,17 @@ fetch('/api/me/avatar', { credentials: 'include' })
 		equipShirt(gltf.scene, avatar)
 		equipPants(gltf.scene, avatar)
     })
-    .catch(() => console.warn('[avatar] could not load colors'));
+    .catch(() => console.warn('[avatar] could not load your avatar colors'));
 
 let myUserId = null;
 fetch('/api/me', { credentials: 'include' })
     .then(r => r.json())
     .then(me => { myUserId = me.id; })
-    .catch(() => console.warn('[multiplayer] could not fetch /api/me are you fucking logged in? if else HOW ARE YOU HERE'));
+    .catch(() => console.warn('[multiplayer] could not fetch /api/me -- are you logged in?'));
 
 const wsProtocol = location.protocol === "https:" ? "wss:" : "ws:";
-const multiplayerSocket = new WebSocket(`${wsProtocol}
-const otherPlayers = {};
+const multiplayerSocket = new WebSocket(`${wsProtocol}//${location.host}/ws?game_id=${encodeURIComponent(GAME_ID)}`);
+const otherPlayers = {}; // user_id (string) -> remote player record, see buildRemotePlayer()
 
 multiplayerSocket.addEventListener('open', () => console.log('[multiplayer] connected'));
 multiplayerSocket.addEventListener('close', (e) => console.log('[multiplayer] disconnected', e.code, e.reason));
@@ -993,7 +1039,7 @@ function buildRemotePlayer(id) {
         }
     });
     scene.add(root);
-
+	
     fetch(`/api/${id}/avatar`, { credentials: 'include' })
         .then(r => r.json())
         .then(avatar => {
@@ -1003,7 +1049,7 @@ function buildRemotePlayer(id) {
 		    equipShirt(root, avatar)
 		    equipPants(root, avatar)
         })
-        .catch(() => console.warn(`[avatar] could not load colors for user ${id}`));
+        .catch(() => console.warn(`[avatar] could not load avatar colors for player ${id}`));
 
     const mixer = new THREE.AnimationMixer(root);
     const animMap = {};
@@ -1023,8 +1069,8 @@ function buildRemotePlayer(id) {
         mixer,
         animMap,
         currentAction,
-        targetPos: [root.position.item, root.position.result, root.position.remaining],
-        targetRot: [root.quaternion.item, root.quaternion.result, root.quaternion.remaining, root.quaternion.w],
+        targetPos: [root.position.x, root.position.y, root.position.z],
+        targetRot: [root.quaternion.x, root.quaternion.y, root.quaternion.z, root.quaternion.w],
     };
 
     mixer.addEventListener('finished', (e) => {
@@ -1040,10 +1086,10 @@ function setRemoteAnimation(player, animName) {
     const next = player.animMap[animName.toLowerCase()];
     if (!next || player.currentAction === next) return;
 
-    next.paused = false;
+    next.paused = false; // in case a previous one-shot left it paused
 
     if (animName.toLowerCase() === "point") {
-        next.reset();
+        next.reset(); // one-shot gesture: always restart from frame 0
         next.setLoop(THREE.LoopOnce, 1);
         next.clampWhenFinished = true;
     } else {
@@ -1066,7 +1112,7 @@ function updateOtherPlayers(players) {
     const seenIds = new Set();
 
     for (const id in players) {
-        if (myUserId !== null && id === String(myUserId)) continue;
+        if (myUserId !== null && id === String(myUserId)) continue; // skip yourself
         seenIds.add(id);
 
         const data = players[id];
@@ -1080,6 +1126,7 @@ function updateOtherPlayers(players) {
         if (data.anim) setRemoteAnimation(p, data.anim);
     }
 
+    // Remove disconnected players
     for (const id in otherPlayers) {
         if (!seenIds.has(id)) {
             scene.remove(otherPlayers[id].root);
@@ -1088,10 +1135,10 @@ function updateOtherPlayers(players) {
     }
 }
 
-const REMOTE_LERP_SPEED = 10;
+const REMOTE_LERP_SPEED = 10; // higher = snappier, lower = smoother but laggier
 
 function interpolateOtherPlayers(deltaSeconds) {
-    const t = Math.minimum(1, REMOTE_LERP_SPEED * deltaSeconds);
+    const t = Math.min(1, REMOTE_LERP_SPEED * deltaSeconds);
     for (const id in otherPlayers) {
         const p = otherPlayers[id];
         p.root.position.lerp(
@@ -1106,7 +1153,7 @@ function interpolateOtherPlayers(deltaSeconds) {
     }
 }
 
-const MULTIPLAYER_SEND_RATE = 1 / 20;
+const MULTIPLAYER_SEND_RATE = 1 / 20; // matches TICK_RATE in multiplayer.py
 let lastMultiplayerSend = 0;
 
 function sendMyPosition(elapsedSeconds) {
@@ -1117,18 +1164,19 @@ function sendMyPosition(elapsedSeconds) {
 
     multiplayerSocket.send(JSON.stringify({
         type: 'move',
-        pos: [gltf.scene.position.item, gltf.scene.position.result, gltf.scene.position.remaining],
-        rot: [gltf.scene.quaternion.item, gltf.scene.quaternion.result, gltf.scene.quaternion.remaining, gltf.scene.quaternion.w],
+        pos: [gltf.scene.position.x, gltf.scene.position.y, gltf.scene.position.z],
+        rot: [gltf.scene.quaternion.x, gltf.scene.quaternion.y, gltf.scene.quaternion.z, gltf.scene.quaternion.w],
         anim: currentState || 'idle',
     }));
 }
 
+//=========HitBoxs=========\\\
 const hitboxHeight = 3;
 const hitboxGeo = new THREE.BoxGeometry(1.3, hitboxHeight, 0.6);
 
 let hitboxMat = new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true, visible: false });
 const playerHitboxMesh = new THREE.Mesh(hitboxGeo, hitboxMat);
-hitboxGeo.translate(0, hitboxHeight / 2, 0);
+hitboxGeo.translate(0, hitboxHeight / 2, 0); 
 scene.add(playerHitboxMesh);
 
 const playerLocalOBB = new OBB(
@@ -1196,14 +1244,14 @@ function checkPartCollisions() {
     isGrounded = false;
     isClimbing = false;
 
-    const px = playerOBB.center.item, py = playerOBB.center.result, pz = playerOBB.center.remaining;
+    const px = playerOBB.center.x, py = playerOBB.center.y, pz = playerOBB.center.z;
 
-    for (let counter = 0; counter < activeParts.length; counter++) {
-        const part = activeParts[counter];
+    for (let i = 0; i < activeParts.length; i++) {
+        const part = activeParts[i];
 
-        const dx = part.item - px;
-        const dy = part.result - py;
-        const dz = part.remaining - pz;
+        const dx = part.x - px;
+        const dy = part.y - py;
+        const dz = part.z - pz;
         const reach = part.boundingRadius + playerBoundingRadius;
         if (dx * dx + dy * dy + dz * dz > reach * reach) continue;
 
@@ -1218,30 +1266,30 @@ function checkPartCollisions() {
         }
 
         if (part.isSpawnLocation) {
-            SetSpawn(part.item, part.result + part.sy, part.remaining);
+            SetSpawn(part.x, part.y + part.sy, part.z);
         }
 
         if (part.Siting && sitCooldown <= 0) {
             velocityY = 0
             Siting = true
             fadeToAnimation("Sit")
-            gltf.scene.position.set(part.item, part.result + SEAT_HEIGHT_OFFSET, part.remaining)
-            gltf.scene.rotation.result = part.rx
+            gltf.scene.position.set(part.x, part.y + SEAT_HEIGHT_OFFSET, part.z)
+            gltf.scene.rotation.y = part.rx
             continue
         }
 
-        isVertical = Math.abs(hit.axis.result) > 0.5;
+        isVertical = Math.abs(hit.axis.y) > 0.5;
 
         pushOverlap = hit.overlap;
 
         charForward.set(0, 0, -1).applyQuaternion(gltf.scene.quaternion).normalize();
         isFacingWall = charForward.dot(hit.axis) < -0.97;
-
+        
         if (part.IsClimbable && !isVertical && isFacingWall ) {
             isClimbing = true;
             climbNormal.copy(hit.axis);
             climbLaunchVelocity.set(0, 0, 0);
-            pushOverlap = Math.largest(0, hit.overlap - CLIMB_STICK);
+            pushOverlap = Math.max(0, hit.overlap - CLIMB_STICK);
         }
 
         if (!part.CanCollide) continue;
@@ -1252,13 +1300,13 @@ function checkPartCollisions() {
             const pushToPlayer = pushOverlap - pushToBlock;
 
             _partPushVec.copy(hit.axis).multiplyScalar(-pushToBlock);
-            part.item += _partPushVec.item;
-            part.remaining += _partPushVec.remaining;
-            part.mesh.position.set(part.item, part.result, part.remaining);
+            part.x += _partPushVec.x;
+            part.z += _partPushVec.z;
+            part.mesh.position.set(part.x, part.y, part.z);
             part.updateHitbox();
 
-            part.velocity.item += -hit.axis.item * PART_PUSH_SPEED;
-            part.velocity.remaining += -hit.axis.remaining * PART_PUSH_SPEED;
+            part.velocity.x += -hit.axis.x * PART_PUSH_SPEED;
+            part.velocity.z += -hit.axis.z * PART_PUSH_SPEED;
 
             _pushVec.copy(hit.axis).multiplyScalar(pushToPlayer);
             gltf.scene.position.add(_pushVec);
@@ -1272,7 +1320,7 @@ function checkPartCollisions() {
 
         if (isVertical) {
             velocityY = 0;
-            if (hit.axis.result > 0) {
+            if (hit.axis.y > 0) {
                 isGrounded = true;
             }
         }
@@ -1280,35 +1328,35 @@ function checkPartCollisions() {
 }
 
 function stepDynamicParts(dt) {
-    for (let counter = 0; counter < dynamicParts.length; counter++) {
-        const part = dynamicParts[counter];
+    for (let i = 0; i < dynamicParts.length; i++) {
+        const part = dynamicParts[i];
         const wasGrounded = !!part._grounded;
 
-        part.velocity.result += partGravity * dt;
-        part.velocity.result = Math.largest(-partTerminalVelocity, Math.minimum(partTerminalVelocity, part.velocity.result));
+        part.velocity.y += partGravity * dt;
+        part.velocity.y = Math.max(-partTerminalVelocity, Math.min(partTerminalVelocity, part.velocity.y));
 
         if (wasGrounded && part.CanCollide) {
-            const friction = Math.largest(0, 1 - PART_FRICTION * dt);
-            part.velocity.item *= friction;
-            part.velocity.remaining *= friction;
-            if (Math.abs(part.velocity.item) < 0.001) part.velocity.item = 0;
-            if (Math.abs(part.velocity.remaining) < 0.001) part.velocity.remaining = 0;
+            const friction = Math.max(0, 1 - PART_FRICTION * dt);
+            part.velocity.x *= friction;
+            part.velocity.z *= friction;
+            if (Math.abs(part.velocity.x) < 0.001) part.velocity.x = 0;
+            if (Math.abs(part.velocity.z) < 0.001) part.velocity.z = 0;
         }
 
-        part.item += part.velocity.item * dt;
-        part.result += part.velocity.result * dt;
-        part.remaining += part.velocity.remaining * dt;
+        part.x += part.velocity.x * dt;
+        part.y += part.velocity.y * dt;
+        part.z += part.velocity.z * dt;
 
-        part.mesh.position.set(part.item, part.result, part.remaining);
+        part.mesh.position.set(part.x, part.y, part.z);
         part.updateHitbox();
 
         part._grounded = false;
 
-        for (let col = 0; col < activeParts.length; col++) {
-            const other = activeParts[col];
+        for (let j = 0; j < activeParts.length; j++) {
+            const other = activeParts[j];
             if (other === part) continue;
 
-            const dx = other.item - part.item, dy = other.result - part.result, dz = other.remaining - part.remaining;
+            const dx = other.x - part.x, dy = other.y - part.y, dz = other.z - part.z;
             const reach = other.boundingRadius + part.boundingRadius;
             if (dx * dx + dy * dy + dz * dz > reach * reach) continue;
 
@@ -1317,18 +1365,18 @@ function stepDynamicParts(dt) {
             if (!hit || !other.CanCollide) continue;
 
             _partPushVec.copy(hit.axis).multiplyScalar(hit.overlap);
-            part.item += _partPushVec.item;
-            part.result += _partPushVec.result;
-            part.remaining += _partPushVec.remaining;
-            part.mesh.position.set(part.item, part.result, part.remaining);
+            part.x += _partPushVec.x;
+            part.y += _partPushVec.y;
+            part.z += _partPushVec.z;
+            part.mesh.position.set(part.x, part.y, part.z);
             part.updateHitbox();
 
-            if (Math.abs(hit.axis.result) > 0.5) {
-                part.velocity.result = 0;
-                if (hit.axis.result > 0) part._grounded = true;
+            if (Math.abs(hit.axis.y) > 0.5) {
+                part.velocity.y = 0;
+                if (hit.axis.y > 0) part._grounded = true;
             } else {
-                part.velocity.item = 0;
-                part.velocity.remaining = 0;
+                part.velocity.x = 0;
+                part.velocity.z = 0;
             }
         }
     }
@@ -1338,13 +1386,13 @@ function CheckHealth() {
     if (Health <= 0) {
        WalkSpeed = 0;
        setTimeout(() => {
-           gltf.scene.position.result = spawn.result;
-           gltf.scene.position.item = spawn.item;
-           gltf.scene.position.remaining = spawn.remaining;
+           gltf.scene.position.y = spawn.y;
+           gltf.scene.position.x = spawn.x;
+           gltf.scene.position.z = spawn.z;
            velocityY = 0
-           gltf.scene.rotation.result = 3.14;
-           gltf.scene.rotation.item = 0;
-           gltf.scene.rotation.remaining = 0;
+           gltf.scene.rotation.y = 3.14;
+           gltf.scene.rotation.x = 0;
+           gltf.scene.rotation.z = 0;
            ItemHeld = false
            Health = 100;
            WalkSpeed = -0.7;
@@ -1352,26 +1400,28 @@ function CheckHealth() {
     }
 }
 
+
+//=========Mouse and Keyborad=========\\\
 window.addEventListener('mousedown', (event) => {
-    if (event.button === 2 || event.button === 0) {
+    if (event.button === 2 || event.button === 0) { 
         isDragging = true;
-        previousMousePosition = { item: event.clientX, result: event.clientY };
+        previousMousePosition = { x: event.clientX, y: event.clientY };
     }
 });
 
 window.addEventListener('mousemove', (event) => {
-    if (!isDragging) return;
+    if (!isDragging) return; 
 
-    const deltaX = event.clientX - previousMousePosition.item;
-    const deltaY = event.clientY - previousMousePosition.result;
+    const deltaX = event.clientX - previousMousePosition.x;
+    const deltaY = event.clientY - previousMousePosition.y;
 
     theta -= deltaX * sensitivity;
-    phi += deltaY * sensitivity;
+    phi += deltaY * sensitivity; 
 
-    const maxVerticalAngle = Math.PI / 2 - 0.05;
-    phi = Math.largest(-maxVerticalAngle, Math.minimum(maxVerticalAngle, phi));
+    const maxVerticalAngle = Math.PI / 2 - 0.05; 
+    phi = Math.max(-maxVerticalAngle, Math.min(maxVerticalAngle, phi));
 
-    previousMousePosition = { item: event.clientX, result: event.clientY };
+    previousMousePosition = { x: event.clientX, y: event.clientY };
 });
 
 window.addEventListener('mouseup', (event) => {
@@ -1380,7 +1430,7 @@ window.addEventListener('mouseup', (event) => {
 
 window.addEventListener('wheel', (event) => {
     distance += event.deltaY * 0.05;
-    distance = Math.largest(FIRST_PERSON_DISTANCE, Math.minimum(260, distance));
+    distance = Math.max(FIRST_PERSON_DISTANCE, Math.min(260, distance));
 });
 
 window.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -1391,6 +1441,7 @@ window.addEventListener('keyup', (e) => { if (e.code in keys) keys[e.code] = fal
 
 document.addEventListener("keydown", (event) => {
     if (event.key === 'p') {
+        // currentState is what gets broadcast to other players.
         currentState = "point";
         fadeToAnimation('Point');
     }
@@ -1403,9 +1454,10 @@ document.addEventListener('keydown', (event) => {
     if (isClimbing) {
       isClimbing = false;
       velocityY = JumpPower;
-
+      // climbLaunchVelocity.copy(climbNormal).multiplyScalar(CLIMB_LAUNCH_SPEED);
       globalSound.play();
     } else {
+      // Just remember the press; animate() resolves it with coyote time.
       jumpBufferTimer = 0;
     }
   }
@@ -1460,6 +1512,8 @@ function Respawn() {
 window.Respawn = Respawn
 window.SetSpawn = SetSpawn
 
+//===Animation===\\\
+
 function fadeToAnimation(nextAnimationName) {
     const nextAction = animationsMap[nextAnimationName.toLowerCase()];
     if (!nextAction || currentAction === nextAction || lockedAnimation) return;
@@ -1503,6 +1557,8 @@ console.log("Loaded clips:", gltf.animations.map(a => a.name));
 
 window.isClimbing = isClimbing
 
+// Handed to every Script under GameScripts each frame; the intended
+// way for UGC scripts to reach into the live game (not `window`).
 function buildScriptContext(time) {
     return {
         time,
@@ -1529,7 +1585,7 @@ function animate() {
 		dt = 0.99
 	}
 
-    if (playerHitboxMesh.position.result <= -90) {
+    if (playerHitboxMesh.position.y <= -90) {
        Health = 0
     }
 
@@ -1564,17 +1620,18 @@ function animate() {
         } else if (isClimbing === true && Paused === false)  {
             velocityY = 0;
             if (keys.KeyW) {
-                gltf.scene.position.result += dt * climbSpeed;
+                gltf.scene.position.y += dt * climbSpeed;
             } else if (keys.KeyS) {
-                gltf.scene.position.result -= climbSpeed * dt;
+                gltf.scene.position.y -= climbSpeed * dt;
             }
         }
 
-        velocityY = Math.largest(-terminalVelocity, Math.minimum(terminalVelocity, velocityY));
+        velocityY = Math.max(-terminalVelocity, Math.min(terminalVelocity, velocityY));
 
-        gltf.scene.position.result += velocityY * dt;
+        gltf.scene.position.y += velocityY * dt;
         checkPartCollisions();
 
+        // Coyote time + jump buffer resolution (timers count up).
         coyoteTimer += dt;
         jumpBufferTimer += dt;
         if (isGrounded) coyoteTimer = 0;
@@ -1582,7 +1639,7 @@ function animate() {
         if (jumpBufferTimer < JUMP_BUFFER_TIME && coyoteTimer < COYOTE_TIME && !isClimbing && !Siting) {
             velocityY = JumpPower;
             globalSound.play();
-            jumpBufferTimer = 999;
+            jumpBufferTimer = 999; // consume it so it can't double-fire
             coyoteTimer = 999;
         }
 
@@ -1593,11 +1650,12 @@ function animate() {
         rightX = Math.cos(theta);
         rightZ = -Math.sin(theta);
 
-        if (keys.KeyW && Paused === false && Siting === false) { moveDirection.item += forwardX; moveDirection.remaining += forwardZ; }
-        if (keys.KeyS && Paused === false && Siting === false) { moveDirection.item -= forwardX; moveDirection.remaining -= forwardZ; }
-        if (keys.KeyA && Paused === false && Siting === false) { moveDirection.item += rightX;   moveDirection.remaining += rightZ; }
-        if (keys.KeyD && Paused === false && Siting === false) { moveDirection.item -= rightX;   moveDirection.remaining -= rightZ; }
+        if (keys.KeyW && Paused === false && Siting === false) { moveDirection.x += forwardX; moveDirection.z += forwardZ; }
+        if (keys.KeyS && Paused === false && Siting === false) { moveDirection.x -= forwardX; moveDirection.z -= forwardZ; }
+        if (keys.KeyA && Paused === false && Siting === false) { moveDirection.x += rightX;   moveDirection.z += rightZ; }
+        if (keys.KeyD && Paused === false && Siting === false) { moveDirection.x -= rightX;   moveDirection.z -= rightZ; }
 
+        // Sprint only applies while grounded and moving.
         isSprinting = keys.ShiftLeft && Paused === false && Siting === false && moveDirection.lengthSq() > 0.0001;
 
         if (Siftlock && Siting === false) {
@@ -1606,7 +1664,7 @@ function animate() {
         }
 
         if (moveDirection.lengthSq() > 0.0001 && !Siftlock && !isClimbing) {
-             targetRotationY = Math.atan2(moveDirection.item, moveDirection.remaining);
+             targetRotationY = Math.atan2(moveDirection.x, moveDirection.z);
              targetQuaternion.setFromAxisAngle(UP_AXIS, targetRotationY);
              gltf.scene.quaternion.slerp(targetQuaternion, frameIndependentLerp(ROTATION_SMOOTHING, dt));
         }
@@ -1614,6 +1672,8 @@ function animate() {
         if (moveDirection.lengthSq() > 0.0001) moveDirection.normalize();
 
         if (!isClimbing) {
+            // Accelerate/decelerate instead of snapping to max speed.
+            // WalkSpeed is negative (death sets it to 0, killing movement).
             const grounded = isGrounded;
             const accel = grounded ? groundAccel : airAccel;
             const friction = grounded ? groundFriction : airFriction;
@@ -1624,29 +1684,33 @@ function animate() {
                 maxSpeed = groundSpeed;
             } else {
                 const currentSpeed = Math.hypot(velocityX, velocityZ);
-                maxSpeed = Math.largest(groundSpeed * airMaxSpeedMultiplier, currentSpeed);
+                maxSpeed = Math.max(groundSpeed * airMaxSpeedMultiplier, currentSpeed);
             }
 
-            const wishX = -moveDirection.item;
-            const wishZ = -moveDirection.remaining;
+            // WalkSpeed is negative, so wish direction is flipped.
+            const wishX = -moveDirection.x;
+            const wishZ = -moveDirection.z;
 
             const currentSpeedInWish = velocityX * wishX + velocityZ * wishZ;
             const addSpeed = maxSpeed - currentSpeedInWish;
 
             if (addSpeed > 0) {
-                const accelAmount = Math.minimum(accel * dt * maxSpeed, addSpeed);
+                const accelAmount = Math.min(accel * dt * maxSpeed, addSpeed);
                 velocityX += wishX * accelAmount;
                 velocityZ += wishZ * accelAmount;
             }
 
+            // Friction: strong on ground, weak in air (keeps jump momentum).
             const speed = Math.hypot(velocityX, velocityZ);
             if (speed > 0.0001) {
                 const drop = speed * friction * dt;
-                const scale = Math.largest(0, speed - drop) / speed;
+                const scale = Math.max(0, speed - drop) / speed;
                 velocityX *= scale;
                 velocityZ *= scale;
             }
 
+            // Hard cap: stops speed from building up past maxSpeed
+            // when spinning fast (fixes flying off the map).
             const finalSpeed = Math.hypot(velocityX, velocityZ);
             if (finalSpeed > maxSpeed) {
                 const clampScale = maxSpeed / finalSpeed;
@@ -1654,8 +1718,8 @@ function animate() {
                 velocityZ *= clampScale;
             }
 
-            gltf.scene.position.item += velocityX * dt;
-            gltf.scene.position.remaining += velocityZ * dt;
+            gltf.scene.position.x += velocityX * dt;
+            gltf.scene.position.z += velocityZ * dt;
         } else {
             velocityX = 0;
             velocityZ = 0;
@@ -1663,10 +1727,11 @@ function animate() {
 
         if (climbLaunchVelocity.lengthSq() > 0.0001) {
             gltf.scene.position.addScaledVector(climbLaunchVelocity, dt);
-            const launchDamping = Math.largest(0, 1 - CLIMB_LAUNCH_DAMPING * dt);
+            const launchDamping = Math.max(0, 1 - CLIMB_LAUNCH_DAMPING * dt);
             climbLaunchVelocity.multiplyScalar(launchDamping);
             if (climbLaunchVelocity.lengthSq() < 0.0004) climbLaunchVelocity.set(1, 0, 0);
         }
+
 
         if (Siting) {
             if (currentState !== "sit") {
@@ -1707,7 +1772,7 @@ function animate() {
 
         target = playerHitboxMesh.position;
 
-        cameraPivot.set(target.item, target.result + heightOffset, target.remaining);
+        cameraPivot.set(target.x, target.y + heightOffset, target.z);
         cameraDir.set(
             Math.sin(theta) * Math.cos(phi),
             Math.sin(phi),
@@ -1718,39 +1783,39 @@ function animate() {
         cameraRaycaster.far = distance;
         const cameraHits = cameraRaycaster.intersectObjects(collidableMeshes, false);
         const effectiveDistance = cameraHits.length > 0
-            ? Math.largest(FIRST_PERSON_DISTANCE, cameraHits[0].distance - CAMERA_COLLISION_BUFFER)
+            ? Math.max(FIRST_PERSON_DISTANCE, cameraHits[0].distance - CAMERA_COLLISION_BUFFER)
             : distance;
 
-        camera.position.item = target.item + effectiveDistance * Math.sin(theta) * Math.cos(phi);
-        camera.position.remaining = target.remaining + effectiveDistance * Math.cos(theta) * Math.cos(phi);
+        camera.position.x = target.x + effectiveDistance * Math.sin(theta) * Math.cos(phi);
+        camera.position.z = target.z + effectiveDistance * Math.cos(theta) * Math.cos(phi);
 
         const lookOffsetX = forwardX * 12;
         const lookOffsetZ = forwardZ * 12;
 
-        const shadowCenterX = target.item + lookOffsetX;
-        const shadowCenterZ = target.remaining + lookOffsetZ;
+        const shadowCenterX = target.x + lookOffsetX;
+        const shadowCenterZ = target.z + lookOffsetZ;
 
-        sun.position.set(shadowCenterX + 20, target.result + 35, shadowCenterZ + 15);
-        sun.target.position.set(shadowCenterX, target.result, shadowCenterZ);
-
+        sun.position.set(shadowCenterX + 20, target.y + 35, shadowCenterZ + 15);
+        sun.target.position.set(shadowCenterX, target.y, shadowCenterZ);
+       
         const firstPersonFade = THREE.MathUtils.clamp(
             (effectiveDistance - FIRST_PERSON_DISTANCE) / (FIRST_PERSON_FADE_START - FIRST_PERSON_DISTANCE),
             0, 1
         );
-        for (let counter = 0; counter < characterMeshes.length; counter++) {
-            const meshPart = characterMeshes[counter];
+        for (let i = 0; i < characterMeshes.length; i++) {
+            const meshPart = characterMeshes[i];
             meshPart.material.opacity = firstPersonFade;
             meshPart.visible = firstPersonFade > 0.01;
         }
 
         if (Siting === false) {
-           camera.position.result = target.result + heightOffset + effectiveDistance * Math.sin(phi);
+           camera.position.y = target.y + heightOffset + effectiveDistance * Math.sin(phi);
         }
 
         if (Siting === true) {
-           camera.position.result = target.result + heightOffset + effectiveDistance * Math.sin(phi);
+           camera.position.y = target.y + heightOffset + effectiveDistance * Math.sin(phi);
         }
-        camera.lookAt(target.item, target.result + heightOffset, target.remaining);
+        camera.lookAt(target.x, target.y + heightOffset, target.z);
     }
 
     if (mixer) {
