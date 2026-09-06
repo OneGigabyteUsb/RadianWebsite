@@ -717,7 +717,7 @@ function findHeadBone(root) {
 }
 
 const HAT_BONE_Y_OFFSET = 0.18;
-const HAT_STACK_SPACING = 0.05; // extra height added per stacked hat so they don't overlap
+const HAT_STACK_SPACING = 0.05;
 
 async function equipHat(root, avatar) {
     if (!avatar || !avatar.accessories) return;
@@ -725,7 +725,6 @@ async function equipHat(root, avatar) {
     const equippedIds = new Set(avatar.accessories.ids);
     const hatItems = items.filter(item => item.type === "Hat" && equippedIds.has(item.Id));
 
-    // Remove any previously equipped hats before adding the new set.
     const previousHats = equippedHatsByRoot.get(root);
     if (previousHats) {
         for (const group of previousHats) group.parent?.remove(group);
@@ -765,14 +764,11 @@ async function equipHat(root, avatar) {
 
         const hatGroup = new THREE.Group();
         hatGroup.add(hat);
-
-        // Each stacked hat sits a bit higher than the last so multiple
-        // hats don't render on top of each other at the same spot.
+		
         const stackOffset = HAT_BONE_Y_OFFSET + i * HAT_STACK_SPACING;
 
         const headBone = findHeadBone(root);
         if (headBone) {
-            // Bone-local space: no geometry to measure, just a tuned offset.
             hatGroup.position.set(0, stackOffset, 0);
             headBone.add(hatGroup);
         } else {
@@ -787,7 +783,7 @@ async function equipHat(root, avatar) {
                 );
                 headMesh.add(hatGroup);
             } else {
-                root.add(hatGroup); // last resort, sits at the model's origin
+                root.add(hatGroup);
             }
         }
 
@@ -1009,17 +1005,17 @@ fetch('/api/me/avatar', { credentials: 'include' })
 		equipShirt(gltf.scene, avatar)
 		equipPants(gltf.scene, avatar)
     })
-    .catch(() => console.warn('[avatar] could not load your avatar colors'));
+    .catch(() => console.warn('[avatar] could not load colors'));
 
 let myUserId = null;
 fetch('/api/me', { credentials: 'include' })
     .then(r => r.json())
     .then(me => { myUserId = me.id; })
-    .catch(() => console.warn('[multiplayer] could not fetch /api/me -- are you logged in?'));
+    .catch(() => console.warn('[multiplayer] could not fetch /api/me are you fucking logged in? if else HOW ARE YOU HERE'));
 
 const wsProtocol = location.protocol === "https:" ? "wss:" : "ws:";
 const multiplayerSocket = new WebSocket(`${wsProtocol}//${location.host}/ws?game_id=${encodeURIComponent(GAME_ID)}`);
-const otherPlayers = {}; // user_id (string) -> remote player record, see buildRemotePlayer()
+const otherPlayers = {};
 
 multiplayerSocket.addEventListener('open', () => console.log('[multiplayer] connected'));
 multiplayerSocket.addEventListener('close', (e) => console.log('[multiplayer] disconnected', e.code, e.reason));
@@ -1049,7 +1045,7 @@ function buildRemotePlayer(id) {
 		    equipShirt(root, avatar)
 		    equipPants(root, avatar)
         })
-        .catch(() => console.warn(`[avatar] could not load avatar colors for player ${id}`));
+        .catch(() => console.warn(`[avatar] could not load colors for user ${id}`));
 
     const mixer = new THREE.AnimationMixer(root);
     const animMap = {};
@@ -1086,10 +1082,10 @@ function setRemoteAnimation(player, animName) {
     const next = player.animMap[animName.toLowerCase()];
     if (!next || player.currentAction === next) return;
 
-    next.paused = false; // in case a previous one-shot left it paused
+    next.paused = false;
 
     if (animName.toLowerCase() === "point") {
-        next.reset(); // one-shot gesture: always restart from frame 0
+        next.reset();
         next.setLoop(THREE.LoopOnce, 1);
         next.clampWhenFinished = true;
     } else {
@@ -1112,7 +1108,7 @@ function updateOtherPlayers(players) {
     const seenIds = new Set();
 
     for (const id in players) {
-        if (myUserId !== null && id === String(myUserId)) continue; // skip yourself
+        if (myUserId !== null && id === String(myUserId)) continue; // skip yourself bruh
         seenIds.add(id);
 
         const data = players[id];
@@ -1126,7 +1122,7 @@ function updateOtherPlayers(players) {
         if (data.anim) setRemoteAnimation(p, data.anim);
     }
 
-    // Remove disconnected players
+    // remove disconnected players this some times dont work???
     for (const id in otherPlayers) {
         if (!seenIds.has(id)) {
             scene.remove(otherPlayers[id].root);
@@ -1153,7 +1149,7 @@ function interpolateOtherPlayers(deltaSeconds) {
     }
 }
 
-const MULTIPLAYER_SEND_RATE = 1 / 20; // matches TICK_RATE in multiplayer.py
+const MULTIPLAYER_SEND_RATE = 1 / 20; // super cool send rate
 let lastMultiplayerSend = 0;
 
 function sendMyPosition(elapsedSeconds) {
@@ -1441,7 +1437,6 @@ window.addEventListener('keyup', (e) => { if (e.code in keys) keys[e.code] = fal
 
 document.addEventListener("keydown", (event) => {
     if (event.key === 'p') {
-        // currentState is what gets broadcast to other players.
         currentState = "point";
         fadeToAnimation('Point');
     }
@@ -1454,10 +1449,9 @@ document.addEventListener('keydown', (event) => {
     if (isClimbing) {
       isClimbing = false;
       velocityY = JumpPower;
-      // climbLaunchVelocity.copy(climbNormal).multiplyScalar(CLIMB_LAUNCH_SPEED);
+      // climbLaunchVelocity.copy(climbNormal).multiplyScalar(CLIMB_LAUNCH_SPEED); // this is borken 
       globalSound.play();
     } else {
-      // Just remember the press; animate() resolves it with coyote time.
       jumpBufferTimer = 0;
     }
   }
@@ -1557,8 +1551,6 @@ console.log("Loaded clips:", gltf.animations.map(a => a.name));
 
 window.isClimbing = isClimbing
 
-// Handed to every Script under GameScripts each frame; the intended
-// way for UGC scripts to reach into the live game (not `window`).
 function buildScriptContext(time) {
     return {
         time,
@@ -1639,7 +1631,7 @@ function animate() {
         if (jumpBufferTimer < JUMP_BUFFER_TIME && coyoteTimer < COYOTE_TIME && !isClimbing && !Siting) {
             velocityY = JumpPower;
             globalSound.play();
-            jumpBufferTimer = 999; // consume it so it can't double-fire
+            jumpBufferTimer = 999;
             coyoteTimer = 999;
         }
 
@@ -1672,8 +1664,6 @@ function animate() {
         if (moveDirection.lengthSq() > 0.0001) moveDirection.normalize();
 
         if (!isClimbing) {
-            // Accelerate/decelerate instead of snapping to max speed.
-            // WalkSpeed is negative (death sets it to 0, killing movement).
             const grounded = isGrounded;
             const accel = grounded ? groundAccel : airAccel;
             const friction = grounded ? groundFriction : airFriction;
@@ -1687,7 +1677,6 @@ function animate() {
                 maxSpeed = Math.max(groundSpeed * airMaxSpeedMultiplier, currentSpeed);
             }
 
-            // WalkSpeed is negative, so wish direction is flipped.
             const wishX = -moveDirection.x;
             const wishZ = -moveDirection.z;
 
@@ -1700,7 +1689,6 @@ function animate() {
                 velocityZ += wishZ * accelAmount;
             }
 
-            // Friction: strong on ground, weak in air (keeps jump momentum).
             const speed = Math.hypot(velocityX, velocityZ);
             if (speed > 0.0001) {
                 const drop = speed * friction * dt;
@@ -1709,8 +1697,6 @@ function animate() {
                 velocityZ *= scale;
             }
 
-            // Hard cap: stops speed from building up past maxSpeed
-            // when spinning fast (fixes flying off the map).
             const finalSpeed = Math.hypot(velocityX, velocityZ);
             if (finalSpeed > maxSpeed) {
                 const clampScale = maxSpeed / finalSpeed;
