@@ -8,7 +8,58 @@
       "CanCollide": true,
       "isSpawnLocation": true,
       "IsClimbable": false,
+      "Anchored": true,{
+  "parts": [
+    {
+      "name": "Ground",
+      "script": "",
+      "scriptLang": "javascript",
+      "killbrick": false,
+      "CanCollide": true,
+      "isSpawnLocation": true,
+      "IsClimbable": false,
       "Anchored": true,
+      "x": 0, "y": -0.5, "z": 0,
+      "sx": 30, "sy": 1, "sz": 30,
+      "color": "#5cb85c",
+      "material": "grass"
+    },
+    {
+      "name": "ButtonA",
+      "script": "",
+      "scriptLang": "javascript",
+      "killbrick": false,
+      "CanCollide": false,
+      "isSpawnLocation": false,
+      "IsClimbable": false,
+      "Anchored": true,
+      "x": 5, "y": 0.1, "z": 10,
+      "sx": 1, "sy": 0.2, "sz": 1,
+      "color": "#ff3333",
+      "material": "concrete"
+    },
+    {
+      "name": "Door1",
+      "script": "",
+      "scriptLang": "javascript",
+      "killbrick": false,
+      "CanCollide": true,
+      "isSpawnLocation": false,
+      "IsClimbable": false,
+      "Anchored": true,
+      "x": 5, "y": 4, "z": 15,
+      "sx": 4, "sy": 8, "sz": 0.5,
+      "color": "#8b5a2b",
+      "material": "wood"
+    }
+  ],
+  "scripts": [
+    {
+      "name": "ButtonA_Script",
+      "scriptString": "const button = context.findInstance('ButtonA'); const door = context.findInstance('Door1'); if (!button || !door) return; const isPressed = context.isPlayerTouching(button); if (isPressed && !button._wasPressed) { door.CanCollide = false; door.Transparency = 0.3; } button._wasPressed = isPressed;"
+    }
+  ]
+}
       "x": 0, "y": -0.5, "z": 0,
       "sx": 30, "sy": 1, "sz": 30,
       "color": "#5cb85c",
