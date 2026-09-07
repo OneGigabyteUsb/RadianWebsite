@@ -1071,19 +1071,33 @@ function applyPartSync(part, props) {
     part.updateHitbox();
 }
 
+// Properties that only make sense on the local client (per-player state or
+// per-player interaction toggles) -- never broadcast these, even if a
+// script accidentally passes them into networkSetPart.
+const CLIENT_ONLY_PROPS = new Set(['killbrick', 'isSpawnLocation', 'IsClimbable', 'Siting', 'Anchored']);
+
 // Use this for one-off property changes (color, CanCollide, Transparency,
-// etc) -- e.g. a button toggling a door. Not for continuous physics motion,
-// that's handled separately below via ownership + dynamicSync.
+// etc) -- e.g. a button toggling a door. Works the same whether the part
+// is anchored or not; Anchored only matters for the separate dynamicSync
+// path below (continuous physics motion for unanchored parts).
 function networkSetPart(name, props) {
     const part = Instances.get(name);
     if (!part) return;
-    applyPartSync(part, props);
+
+    const filteredProps = {};
+    for (const key in props) {
+        if (CLIENT_ONLY_PROPS.has(key)) continue;
+        filteredProps[key] = props[key];
+    }
+    if (Object.keys(filteredProps).length === 0) return;
+
+    applyPartSync(part, filteredProps);
     if (multiplayerSocket.readyState === WebSocket.OPEN) {
-        multiplayerSocket.send(JSON.stringify({ type: 'partSync', name, props }));
+        multiplayerSocket.send(JSON.stringify({ type: 'partSync', name, props: filteredProps }));
     }
 }
 
-const DYNAMIC_SYNC_RATE = 1 / 200;
+const DYNAMIC_SYNC_RATE = 1 / 20;
 let lastDynamicSync = 0;
 
 function sendDynamicPartsSync(elapsedSeconds) {
@@ -1243,7 +1257,7 @@ function interpolateOtherPlayers(deltaSeconds) {
     }
 }
 
-const MULTIPLAYER_SEND_RATE = 1 / 200;
+const MULTIPLAYER_SEND_RATE = 1 / 20; // matches TICK_RATE in multiplayer.py
 let lastMultiplayerSend = 0;
 
 function sendMyPosition(elapsedSeconds) {
