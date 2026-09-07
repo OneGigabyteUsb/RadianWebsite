@@ -1083,7 +1083,7 @@ function networkSetPart(name, props) {
     }
 }
 
-const DYNAMIC_SYNC_RATE = 1 / 20;
+const DYNAMIC_SYNC_RATE = 1 / 100;
 let lastDynamicSync = 0;
 
 function sendDynamicPartsSync(elapsedSeconds) {
@@ -1243,7 +1243,7 @@ function interpolateOtherPlayers(deltaSeconds) {
     }
 }
 
-const MULTIPLAYER_SEND_RATE = 1 / 20; // matches TICK_RATE in multiplayer.py
+const MULTIPLAYER_SEND_RATE = 1 / 100;
 let lastMultiplayerSend = 0;
 
 function sendMyPosition(elapsedSeconds) {
