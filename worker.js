@@ -835,9 +835,6 @@ export default {
             }
         }
 
-        // requestsPage() in script.js (the /friends page) GETs this to list
-        // incoming pending requests -- separate from the POST above, which
-        // sends a new request.
         if (url.pathname === "/api/me/friend-requests" && request.method === "GET") {
             try {
                 const cookie = request.headers.get("Cookie") || "";
@@ -1766,13 +1763,6 @@ export class GameRoom {
 
         const { 0: client, 1: server } = new WebSocketPair();
 
-        // Hibernation API: the DO can be evicted from memory between
-        // messages and still wake back up to handle the next one, so a
-        // room with idle-but-connected players doesn't rack up compute
-        // time. Attachments (serializeAttachment/deserializeAttachment)
-        // are how a socket's identity + last known state survive that
-        // eviction -- there is no separate in-memory map to fall out of
-        // sync with reality.
         this.state.acceptWebSocket(server);
         server.serializeAttachment({
             id: userId,
@@ -1784,12 +1774,6 @@ export class GameRoom {
 
         this.broadcastState();
 
-        // Catch the new client up on part state that changed before they
-        // joined (button presses, moved crates, etc). This.parts/owners
-        // don't survive a DO eviction the way attachments do, so a client
-        // joining a room that's been hibernating and just woke up may get
-        // an empty snapshot -- acceptable for now, same caveat as any
-        // other in-memory-only state here.
         server.send(JSON.stringify({ type: "partsSnapshot", parts: this.parts, owners: this.owners }));
 
         return new Response(null, { status: 101, webSocket: client });
