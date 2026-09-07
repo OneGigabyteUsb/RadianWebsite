@@ -835,6 +835,9 @@ export default {
             }
         }
 
+        // requestsPage() in script.js (the /friends page) GETs this to list
+        // incoming pending requests -- separate from the POST above, which
+        // sends a new request.
         if (url.pathname === "/api/me/friend-requests" && request.method === "GET") {
             try {
                 const cookie = request.headers.get("Cookie") || "";
@@ -1721,6 +1724,21 @@ export default {
 // connected player's live position/state in memory and rebroadcasts on
 // every message -- source of truth for a single match, not persisted.
 //
+// Properties that only make sense on the local client (per-player state or
+// per-player interaction toggles) -- stripped server-side too, not just in
+// main.js, since a modified client could send a raw partSync/dynamicSync
+// message bypassing networkSetPart's own filter.
+const CLIENT_ONLY_PROPS = new Set(['killbrick', 'isSpawnLocation', 'IsClimbable', 'Siting', 'Anchored']);
+
+function stripClientOnlyProps(props) {
+    const filtered = {};
+    for (const key in props) {
+        if (CLIENT_ONLY_PROPS.has(key)) continue;
+        filtered[key] = props[key];
+    }
+    return filtered;
+}
+
 // Wire protocol (must match main.js exactly):
 //   client -> server: { type: 'move', pos: [x,y,z], rot: [x,y,z,w], anim }
 //   client -> server: { type: 'chat', text }
@@ -1773,7 +1791,6 @@ export class GameRoom {
         });
 
         this.broadcastState();
-
         server.send(JSON.stringify({ type: "partsSnapshot", parts: this.parts, owners: this.owners }));
 
         return new Response(null, { status: 101, webSocket: client });
@@ -1806,15 +1823,19 @@ export class GameRoom {
             });
         } else if (msg.type === "partSync") {
             if (typeof msg.name !== "string" || typeof msg.props !== "object" || msg.props === null) return;
-            this.parts[msg.name] = { ...(this.parts[msg.name] || {}), ...msg.props };
-            this.broadcast({ type: "partSync", name: msg.name, props: msg.props });
+            const filteredProps = stripClientOnlyProps(msg.props);
+            if (Object.keys(filteredProps).length === 0) return;
+            this.parts[msg.name] = { ...(this.parts[msg.name] || {}), ...filteredProps };
+            this.broadcast({ type: "partSync", name: msg.name, props: filteredProps });
         } else if (msg.type === "dynamicSync") {
             if (!Array.isArray(msg.parts)) return;
-            for (const p of msg.parts) {
-                if (typeof p.name !== "string") continue;
+            const filteredParts = msg.parts
+                .filter(p => typeof p.name === "string")
+                .map(p => ({ name: p.name, ...stripClientOnlyProps(p) }));
+            for (const p of filteredParts) {
                 this.parts[p.name] = { ...(this.parts[p.name] || {}), ...p };
             }
-            this.broadcast({ type: "dynamicSync", parts: msg.parts });
+            this.broadcast({ type: "dynamicSync", parts: filteredParts });
         } else if (msg.type === "claim") {
             if (typeof msg.name !== "string") return;
             this.owners[msg.name] = info.id;
