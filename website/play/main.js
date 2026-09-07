@@ -1038,6 +1038,14 @@ multiplayerSocket.addEventListener('message', (event) => {
         }
     } else if (msg.type === 'claim') {
         partOwners.set(msg.name, msg.userId);
+    } else if (msg.type === 'partsSnapshot') {
+        for (const name in msg.parts) {
+            const part = Instances.get(name);
+            if (part) applyPartSync(part, msg.parts[name]);
+        }
+        for (const name in msg.owners) {
+            partOwners.set(name, msg.owners[name]);
+        }
     }
 });
 
