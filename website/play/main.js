@@ -1083,7 +1083,7 @@ function networkSetPart(name, props) {
     }
 }
 
-const DYNAMIC_SYNC_RATE = 1 / 100;
+const DYNAMIC_SYNC_RATE = 1 / 200;
 let lastDynamicSync = 0;
 
 function sendDynamicPartsSync(elapsedSeconds) {
@@ -1243,7 +1243,7 @@ function interpolateOtherPlayers(deltaSeconds) {
     }
 }
 
-const MULTIPLAYER_SEND_RATE = 1 / 100;
+const MULTIPLAYER_SEND_RATE = 1 / 200;
 let lastMultiplayerSend = 0;
 
 function sendMyPosition(elapsedSeconds) {
