@@ -1097,7 +1097,7 @@ function networkSetPart(name, props) {
     }
 }
 
-const DYNAMIC_SYNC_RATE = 1 / 200;
+const DYNAMIC_SYNC_RATE = 1 / 30;
 let lastDynamicSync = 0;
 
 function sendDynamicPartsSync(elapsedSeconds) {
@@ -1257,7 +1257,7 @@ function interpolateOtherPlayers(deltaSeconds) {
     }
 }
 
-const MULTIPLAYER_SEND_RATE = 1 / 200; // matches TICK_RATE in multiplayer.py
+const MULTIPLAYER_SEND_RATE = 1 / 30; // Cloudflare's DO relay handles this fine; no separate server-side tick to match anymore
 let lastMultiplayerSend = 0;
 
 function sendMyPosition(elapsedSeconds) {
