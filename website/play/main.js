@@ -1559,6 +1559,12 @@ window.isClimbing = isClimbing
 
 // Handed to every Script under GameScripts each frame; the intended
 // way for UGC scripts to reach into the live game (not `window`).
+function isPlayerTouching(part) {
+    if (!part || !part.obb) return false;
+    part.updateHitbox();
+    return playerOBB.intersectsOBB(part.obb);
+}
+
 function buildScriptContext(time) {
     return {
         time,
@@ -1572,7 +1578,8 @@ function buildScriptContext(time) {
         MaxHealth,
         Paused,
         player: gltf && gltf.scene ? gltf.scene : null,
-        findInstance: (name) => Instances.get(name) ?? null
+        findInstance: (name) => Instances.get(name) ?? null,
+        isPlayerTouching
     };
 }
 
