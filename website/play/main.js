@@ -1028,7 +1028,89 @@ multiplayerSocket.addEventListener('message', (event) => {
     const msg = JSON.parse(event.data);
     if (msg.type === 'state') updateOtherPlayers(msg.players);
     else if (msg.type === 'chat') appendChatMessage(msg.username, msg.text);
+    else if (msg.type === 'partSync') {
+        const part = Instances.get(msg.name);
+        if (part) applyPartSync(part, msg.props);
+    } else if (msg.type === 'dynamicSync') {
+        for (const p of msg.parts) {
+            const part = Instances.get(p.name);
+            if (part && partOwners.get(p.name) !== myUserId) applyPartSync(part, p);
+        }
+    } else if (msg.type === 'claim') {
+        partOwners.set(msg.name, msg.userId);
+    }
 });
+
+//=====Universal Part Sync (Roblox-style replication)=====\\
+// Any property change on any named Part can be broadcast to every other
+// client with networkSetPart. Unanchored (dynamic) parts additionally get
+// continuous position sync, with ownership going to whoever is currently
+// touching/pushing the part -- this stops every client from simulating
+// the same crate independently and fighting over its position.
+const partOwners = new Map(); // part name -> userId currently authoritative for its physics
+const touchedThisFrame = new Set();
+
+function applyPartSync(part, props) {
+    Object.assign(part, props);
+    part.mesh.position.set(part.x, part.y, part.z);
+    part.mesh.rotation.set(part.rx, part.ry, part.rz);
+
+    if (props.Transparency !== undefined) {
+        const mats = Array.isArray(part.mesh.material) ? part.mesh.material : [part.mesh.material];
+        mats.forEach(m => { m.transparent = props.Transparency < 1; m.opacity = props.Transparency; });
+    }
+
+    part.updateHitbox();
+}
+
+// Use this for one-off property changes (color, CanCollide, Transparency,
+// etc) -- e.g. a button toggling a door. Not for continuous physics motion,
+// that's handled separately below via ownership + dynamicSync.
+function networkSetPart(name, props) {
+    const part = Instances.get(name);
+    if (!part) return;
+    applyPartSync(part, props);
+    if (multiplayerSocket.readyState === WebSocket.OPEN) {
+        multiplayerSocket.send(JSON.stringify({ type: 'partSync', name, props }));
+    }
+}
+
+const DYNAMIC_SYNC_RATE = 1 / 20;
+let lastDynamicSync = 0;
+
+function sendDynamicPartsSync(elapsedSeconds) {
+    if (elapsedSeconds - lastDynamicSync < DYNAMIC_SYNC_RATE) return;
+    lastDynamicSync = elapsedSeconds;
+    if (multiplayerSocket.readyState !== WebSocket.OPEN) return;
+
+    const owned = dynamicParts.filter(p => partOwners.get(p.name) === myUserId);
+    if (owned.length === 0) return;
+
+    multiplayerSocket.send(JSON.stringify({
+        type: 'dynamicSync',
+        parts: owned.map(p => ({ name: p.name, x: p.x, y: p.y, z: p.z, rx: p.rx, ry: p.ry, rz: p.rz }))
+    }));
+}
+
+// Called once per frame after collision resolution: claims ownership of
+// whatever the local player is actively pushing, and releases parts it's
+// no longer touching so other clients are free to claim them.
+function resolveOwnership() {
+    for (const name of touchedThisFrame) {
+        if (partOwners.get(name) !== myUserId) {
+            partOwners.set(name, myUserId);
+            if (multiplayerSocket.readyState === WebSocket.OPEN) {
+                multiplayerSocket.send(JSON.stringify({ type: 'claim', name, userId: myUserId }));
+            }
+        }
+    }
+    for (const [name, owner] of partOwners) {
+        if (owner === myUserId && !touchedThisFrame.has(name)) {
+            partOwners.delete(name);
+        }
+    }
+    touchedThisFrame.clear();
+}
 
 function buildRemotePlayer(id) {
     const root = SkeletonUtils.clone(gltf.scene);
@@ -1296,6 +1378,7 @@ function checkPartCollisions() {
 
         if (!part.Anchored && !isVertical) {
 			if (!part.CanCollide) continue;
+            touchedThisFrame.add(part.name);
             const pushToBlock = pushOverlap * PART_PUSH_SHARE;
             const pushToPlayer = pushOverlap - pushToBlock;
 
@@ -1325,11 +1408,17 @@ function checkPartCollisions() {
             }
         }
     }
+
+    resolveOwnership();
 }
 
 function stepDynamicParts(dt) {
     for (let i = 0; i < dynamicParts.length; i++) {
         const part = dynamicParts[i];
+
+        const owner = partOwners.get(part.name);
+        if (owner !== undefined && owner !== myUserId) continue; // authoritative sync comes from the owner instead
+
         const wasGrounded = !!part._grounded;
 
         part.velocity.y += partGravity * dt;
@@ -1579,7 +1668,8 @@ function buildScriptContext(time) {
         Paused,
         player: gltf && gltf.scene ? gltf.scene : null,
         findInstance: (name) => Instances.get(name) ?? null,
-        isPlayerTouching
+        isPlayerTouching,
+        networkSetPart
     };
 }
 
@@ -1831,6 +1921,7 @@ function animate() {
 
     interpolateOtherPlayers(delta);
     sendMyPosition(clock.getElapsedTime());
+    sendDynamicPartsSync(clock.getElapsedTime());
 
     mapLights.forEach(light => light.updatePosition());
 
