@@ -1755,13 +1755,16 @@ export class GameRoom {
     constructor(state, env) {
         this.state = state;
         this.env = env;
-        // In-memory source of truth for non-player part state (button/door
-        // toggles, dynamic part transforms) -- same durability tier as the
-        // player positions above (lives only as long as the DO stays warm,
-        // not persisted to storage). Lets a client that joins mid-game get
-        // caught up via partsSnapshot instead of seeing default part state.
+        // In-memory mirror of this.state.storage, kept for fast sync reads
+        // in webSocketMessage/fetch. blockConcurrencyWhile pauses any
+        // incoming requests to this DO until the load finishes, so nothing
+        // reads this.parts before it's actually populated from storage.
         this.parts = {};
         this.owners = {};
+        this.state.blockConcurrencyWhile(async () => {
+            this.parts = (await this.state.storage.get("parts")) || {};
+            this.owners = (await this.state.storage.get("owners")) || {};
+        });
     }
 
         async fetch(request) {
@@ -1781,6 +1784,13 @@ export class GameRoom {
 
         const { 0: client, 1: server } = new WebSocketPair();
 
+        // Hibernation API: the DO can be evicted from memory between
+        // messages and still wake back up to handle the next one, so a
+        // room with idle-but-connected players doesn't rack up compute
+        // time. Attachments (serializeAttachment/deserializeAttachment)
+        // are how a socket's identity + last known state survive that
+        // eviction -- there is no separate in-memory map to fall out of
+        // sync with reality.
         this.state.acceptWebSocket(server);
         server.serializeAttachment({
             id: userId,
@@ -1791,9 +1801,27 @@ export class GameRoom {
         });
 
         this.broadcastState();
+
+        // Catch the new client up on part state that changed before they
+        // joined (button presses, moved crates, etc). This.parts/owners
+        // don't survive a DO eviction the way attachments do, so a client
+        // joining a room that's been hibernating and just woke up may get
+        // an empty snapshot -- acceptable for now, same caveat as any
+        // other in-memory-only state here.
         server.send(JSON.stringify({ type: "partsSnapshot", parts: this.parts, owners: this.owners }));
 
         return new Response(null, { status: 101, webSocket: client });
+    }
+
+    // Debounced storage.put for high-frequency dynamicSync updates -- persists
+    // at most once/sec of wall-clock time regardless of message rate, so
+    // bumping the client's sync tick rate doesn't multiply storage-write cost.
+    schedulePartsPersist() {
+        if (this._persistTimer) return;
+        this._persistTimer = setTimeout(() => {
+            this._persistTimer = null;
+            this.state.storage.put("parts", this.parts);
+        }, 1000);
     }
 
     async webSocketMessage(ws, message) {
@@ -1826,6 +1854,7 @@ export class GameRoom {
             const filteredProps = stripClientOnlyProps(msg.props);
             if (Object.keys(filteredProps).length === 0) return;
             this.parts[msg.name] = { ...(this.parts[msg.name] || {}), ...filteredProps };
+            this.state.storage.put("parts", this.parts); // fire-and-forget; not awaited so it doesn't delay the broadcast
             this.broadcast({ type: "partSync", name: msg.name, props: filteredProps });
         } else if (msg.type === "dynamicSync") {
             if (!Array.isArray(msg.parts)) return;
@@ -1835,10 +1864,12 @@ export class GameRoom {
             for (const p of filteredParts) {
                 this.parts[p.name] = { ...(this.parts[p.name] || {}), ...p };
             }
+            this.schedulePartsPersist(); // throttled -- dynamicSync fires far too often to persist on every message
             this.broadcast({ type: "dynamicSync", parts: filteredParts });
         } else if (msg.type === "claim") {
             if (typeof msg.name !== "string") return;
             this.owners[msg.name] = info.id;
+            this.state.storage.put("owners", this.owners);
             this.broadcast({ type: "claim", name: msg.name, userId: info.id });
         }
     }
