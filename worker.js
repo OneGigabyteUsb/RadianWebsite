@@ -399,6 +399,8 @@ export default {
             }
         }
 
+        // avatarPage()'s color picker (script.js) posts here whenever the
+        // user picks a new hex color for a body part.
         if (url.pathname === "/api/me/avatar/color" && request.method === "POST") {
             try {
                 const cookie = request.headers.get("Cookie") || "";
@@ -429,6 +431,9 @@ export default {
                 const part = body.part;
                 const color = body.color;
 
+                // Whitelist the part so it's safe to interpolate into the
+                // column name below -- these must match AVATAR_PARTS in
+                // script.js exactly.
                 const VALID_PARTS = new Set([
                     "head", "torso", "right_arm", "left_arm", "right_leg", "left_leg"
                 ]);
@@ -473,6 +478,8 @@ export default {
             }
         }
 
+        // wireCatalogGridClicks() in script.js posts here when an item in
+        // the /builder catalog grid is clicked, to equip or unequip it.
         if (url.pathname === "/api/me/avatar/accessory" && request.method === "POST") {
             try {
                 const cookie = request.headers.get("Cookie") || "";
@@ -554,6 +561,11 @@ export default {
             }
         }
 
+        // buildRemotePlayer() in main.js fetches this for every other
+        // player it spawns in-game, to color/equip their avatar. Public
+        // and read-only, same as viewing a profile -- no session needed.
+        // Matched narrowly (numeric id only) so it doesn't shadow
+        // /api/me/avatar or any other /api/<word>/... route above.
         const publicAvatarMatch = url.pathname.match(/^\/api\/(\d+)\/avatar$/);
         if (publicAvatarMatch && request.method === "GET") {
             try {
@@ -693,6 +705,10 @@ export default {
             }
         }
 
+        // script.js's "Add Friend" button posts here (see renderRelationActions
+        // in script.js), so this is aligned to /api/friends/request rather
+        // than /api/me/friend-requests, which script.js instead GETs to list
+        // incoming requests (not implemented here).
         if (url.pathname === "/api/friends/request" && request.method === "POST") {
             try {
                 const cookie = request.headers.get("Cookie") || "";
@@ -819,6 +835,9 @@ export default {
             }
         }
 
+        // requestsPage() in script.js (the /friends page) GETs this to list
+        // incoming pending requests -- separate from the POST above, which
+        // sends a new request.
         if (url.pathname === "/api/me/friend-requests" && request.method === "GET") {
             try {
                 const cookie = request.headers.get("Cookie") || "";
@@ -859,6 +878,7 @@ export default {
                     .bind(session.user_id)
                     .all();
 
+                // requestsPage() expects a bare array, not a wrapped object.
                 return Response.json(requests.results || []);
 
             } catch (error) {
@@ -980,6 +1000,8 @@ export default {
                     });
                 }
 
+                // Declining removes the pending row entirely, so the
+                // requester is free to send a new request later.
                 const result = await env.DB
                     .prepare(`
                         DELETE FROM friendships
@@ -1013,6 +1035,10 @@ export default {
             }
         }
 
+        // renderRelationActions() in script.js posts here for both
+        // "Remove Friend" (an accepted friendship) and "Cancel Request"
+        // (a pending one this user sent) -- either way it's the same
+        // "delete whatever friendship row connects these two users" op.
         if (url.pathname === "/api/friends/remove" && request.method === "POST") {
             try {
                 const cookie = request.headers.get("Cookie") || "";
@@ -1080,6 +1106,9 @@ export default {
             }
         }
 
+        // profilePage() in script.js fetches this for /profile/:id. Publicly
+        // viewable (no login required), but friendship_status is computed
+        // relative to whoever's session cookie is present, if any.
         if (url.pathname.startsWith("/api/profile/") && request.method === "GET") {
             try {
                 const profileId = Number(url.pathname.slice("/api/profile/".length));
@@ -1120,6 +1149,9 @@ export default {
                     .bind(user.id, user.id)
                     .first();
 
+                // Figure out the viewer (if any) from the session cookie, so
+                // we can report friendship_status relative to them. Not
+                // being logged in just means "not_friends" everywhere.
                 let friendshipStatus = "not_friends";
 
                 const cookie = request.headers.get("Cookie") || "";
@@ -1179,6 +1211,13 @@ export default {
             }
         }
 
+        // searchPage() in script.js hits this live as the user types.
+        // Ported from server.py's _handle_search: matches by substring on
+        // username (case-insensitive), capped at 25 results, with
+        // friendship_status computed relative to the viewer (if logged in)
+        // same as /api/profile/:id. follow_status is intentionally omitted
+        // -- there's no followers table yet, and renderRelationActions() in
+        // script.js just skips the Follow/Unfollow button when it's absent.
         if (url.pathname === "/api/search" && request.method === "GET") {
             try {
                 const term = (url.searchParams.get("q") || "").trim().toLowerCase();
@@ -1200,6 +1239,7 @@ export default {
                     if (session) viewerId = session.user_id;
                 }
 
+                // Escape LIKE wildcards that might appear in the search term.
                 const likeTerm = `%${term.replace(/[%_\\]/g, c => `\\${c}`)}%`;
 
                 const usersResult = await env.DB
@@ -1216,6 +1256,8 @@ export default {
 
                 const users = usersResult.results || [];
 
+                // Pull all of the viewer's friendships in one query instead
+                // of one per search result.
                 const friendshipByOtherId = new Map();
 
                 if (viewerId) {
@@ -1574,6 +1616,10 @@ export default {
             }
         }
 
+        // adminPage() in script.js posts here from the Ban button. The
+        // page itself already gates on is_staff/is_moderator client-side,
+        // but that's just UI -- this re-checks server-side since the
+        // client can't be trusted to enforce it.
         if (url.pathname === "/api/admin/ban" && request.method === "POST") {
             try {
                 const cookie = request.headers.get("Cookie") || "";
@@ -1674,10 +1720,31 @@ export default {
     }
 };
 
+// One GameRoom instance per game_id (see the /ws route above). Holds every
+// connected player's live position/state in memory and rebroadcasts on
+// every message -- source of truth for a single match, not persisted.
+//
+// Wire protocol (must match main.js exactly):
+//   client -> server: { type: 'move', pos: [x,y,z], rot: [x,y,z,w], anim }
+//   client -> server: { type: 'chat', text }
+//   client -> server: { type: 'partSync', name, props }
+//   client -> server: { type: 'dynamicSync', parts: [{ name, x, y, z, rx, ry, rz }] }
+//   client -> server: { type: 'claim', name, userId }
+//   server -> client: { type: 'state', players: { [userId]: { pos, rot, anim } } }
+//   server -> client: { type: 'chat', username, text }
+//   server -> client: { type: 'partSync', name, props }
+//   server -> client: { type: 'dynamicSync', parts: [...] }
+//   server -> client: { type: 'claim', name, userId }
+//   server -> client: { type: 'partsSnapshot', parts: { [name]: props }, owners: { [name]: userId } }
 export class GameRoom {
     constructor(state, env) {
         this.state = state;
         this.env = env;
+        // In-memory source of truth for non-player part state (button/door
+        // toggles, dynamic part transforms) -- same durability tier as the
+        // player positions above (lives only as long as the DO stays warm,
+        // not persisted to storage). Lets a client that joins mid-game get
+        // caught up via partsSnapshot instead of seeing default part state.
         this.parts = {};
         this.owners = {};
     }
@@ -1699,6 +1766,13 @@ export class GameRoom {
 
         const { 0: client, 1: server } = new WebSocketPair();
 
+        // Hibernation API: the DO can be evicted from memory between
+        // messages and still wake back up to handle the next one, so a
+        // room with idle-but-connected players doesn't rack up compute
+        // time. Attachments (serializeAttachment/deserializeAttachment)
+        // are how a socket's identity + last known state survive that
+        // eviction -- there is no separate in-memory map to fall out of
+        // sync with reality.
         this.state.acceptWebSocket(server);
         server.serializeAttachment({
             id: userId,
@@ -1710,6 +1784,12 @@ export class GameRoom {
 
         this.broadcastState();
 
+        // Catch the new client up on part state that changed before they
+        // joined (button presses, moved crates, etc). This.parts/owners
+        // don't survive a DO eviction the way attachments do, so a client
+        // joining a room that's been hibernating and just woke up may get
+        // an empty snapshot -- acceptable for now, same caveat as any
+        // other in-memory-only state here.
         server.send(JSON.stringify({ type: "partsSnapshot", parts: this.parts, owners: this.owners }));
 
         return new Response(null, { status: 101, webSocket: client });
@@ -1766,6 +1846,8 @@ export class GameRoom {
         this.broadcastState();
     }
 
+    // players is keyed by user id -- updateOtherPlayers() in main.js does
+    // `for (const id in players)`, not array iteration.
     broadcastState() {
         const players = {};
 
@@ -1785,6 +1867,7 @@ export class GameRoom {
             try {
                 socket.send(json);
             } catch {
+                // Socket already gone; webSocketClose will clean it up.
             }
         }
     }
